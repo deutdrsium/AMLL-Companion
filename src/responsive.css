@@ -1,0 +1,411 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.app {
+  min-height: 0;
+}
+.session-setting {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+  margin-top: 20px;
+}
+select {
+  width: 100%;
+  background: #1e1b22;
+  color: #f5e9ee;
+  padding: 10px;
+  border: 1px solid #ffffff20;
+  border-radius: 8px;
+  font: inherit;
+}
+.offset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 15px;
+}
+.offset-row > button:not(.text-button) {
+  flex: 0 0 28px;
+  height: 28px;
+  background: #ffffff0b;
+  border-radius: 6px;
+}
+.offset-row input {
+  min-width: 0;
+}
+.offset-summary {
+  margin-top: 16px;
+}
+.offset-row .text-button {
+  white-space: nowrap;
+}
+.top-actions {
+  gap: 10px;
+}
+.titlebar {
+  touch-action: none;
+}
+.mini .topbar,
+.mini .footer,
+.mini .source-label,
+.mini .lyrics-heading,
+.mini .lyrics-footer,
+.mini .equalizer {
+  display: none;
+}
+.mini .titlebar {
+  height: 32px;
+  padding-left: 10px;
+}
+.mini .brand {
+  font-size: 10px;
+  gap: 5px;
+  letter-spacing: 0.3px;
+}
+.mini .brand svg {
+  width: 14px;
+}
+.mini .brand > span {
+  display: none;
+}
+.mini .window-actions {
+  height: 32px;
+}
+.mini .window-actions button {
+  width: 28px;
+}
+.mini main,
+.mini.focus main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: calc(100% - 32px);
+  padding: 8px 12px 6px;
+  gap: 0;
+}
+.mini .player-panel,
+.mini.focus .player-panel {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-rows: 44px 20px 34px;
+  gap: 0 11px;
+  opacity: 1;
+}
+.mini .artwork,
+.mini.focus .artwork {
+  width: 44px;
+  margin: 0;
+  border-radius: 6px;
+  grid-row: 1;
+}
+.mini .empty-art {
+  border-radius: 6px;
+}
+.mini .empty-art > span {
+  display: none;
+}
+.mini .vinyl {
+  width: 75%;
+}
+.mini .vinyl svg {
+  width: 12px;
+}
+.mini .track-info {
+  align-self: center;
+}
+.mini .track-info h1,
+.mini.focus .track-info h1 {
+  font-size: 14px;
+  margin-bottom: 3px;
+  letter-spacing: 0;
+}
+.mini .track-info p {
+  font-size: 11px;
+  margin: 0;
+}
+.mini .track-info div > span {
+  display: none;
+}
+.mini .timeline {
+  grid-column: 1 / -1;
+  margin-top: 9px;
+}
+.mini .timeline > div {
+  display: none;
+}
+.mini .timeline input {
+  height: 3px;
+}
+.mini .transport {
+  grid-column: 1 / -1;
+  margin: 0 24px;
+  justify-content: space-around;
+}
+.mini .transport .icon,
+.mini .transport .skip,
+.mini .play {
+  width: 31px;
+  height: 31px;
+}
+.mini .transport svg {
+  width: 18px;
+  height: 18px;
+}
+.mini .transport .play svg {
+  width: 22px;
+  height: 22px;
+}
+.mini .lyrics-panel {
+  margin: 0;
+  min-height: 0;
+}
+.mini .lyric-player {
+  --amll-lp-font-size: 22px;
+  font-size: 22px;
+  mask-image: linear-gradient(transparent, black 18%, black 82%, transparent);
+}
+.mini .amll-lyric-player.dom {
+  --amll-lp-line-width-aspect: 1;
+  --amll-lp-line-padding-x: 0.25em;
+}
+.mini .empty-lyrics,
+.mini.focus .empty-lyrics {
+  align-items: center;
+  text-align: center;
+  padding: 6px 10px;
+}
+.mini .empty-lyrics h2 {
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  white-space: normal;
+  letter-spacing: 0;
+}
+.mini .lyric-symbol,
+.mini .empty-lyrics p,
+.mini .empty-lyrics .waiting {
+  display: none;
+}
+.mini .primary,
+.mini .inline-actions button {
+  margin-top: 6px;
+  padding: 6px 9px;
+  font-size: 10px;
+}
+.mini .toast {
+  bottom: 8px;
+  width: calc(100% - 20px);
+  max-width: none;
+  padding: 9px;
+}
+dialog {
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+}
+.mini .dialog-body {
+  padding: 16px;
+}
+.mini .dialog-title {
+  margin-bottom: 10px;
+}
+.mini .dialog-title h2 {
+  font-size: 17px;
+}
+.mini .connection-card {
+  padding: 12px;
+}
+.mini .setting {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.mini .session-setting {
+  margin-top: 12px;
+}
+@media (min-width: 521px) and (max-width: 800px) and (min-height: 361px) {
+  .topbar {
+    height: 75px;
+    margin: 0 22px;
+  }
+  .nav-title div > span {
+    display: none;
+  }
+  .top-actions {
+    gap: 4px;
+  }
+  .connection {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  main,
+  .focus main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 165px minmax(0, 1fr);
+    height: calc(100% - 150px);
+    padding: 0 24px 12px;
+    gap: 12px;
+  }
+  .player-panel,
+  .focus .player-panel {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    grid-template-rows: 63px 35px 55px;
+    column-gap: 24px;
+    width: 100%;
+    opacity: 1;
+  }
+  .artwork,
+  .focus .artwork {
+    grid-row: 1 / 4;
+    width: 150px;
+    margin: 0;
+  }
+  .empty-art > span {
+    display: none;
+  }
+  .track-info {
+    grid-column: 2;
+    align-self: center;
+  }
+  .track-info h1,
+  .focus .track-info h1 {
+    font-size: 18px;
+  }
+  .track-info p {
+    font-size: 13px;
+  }
+  .track-info div > span {
+    font-size: 11px;
+  }
+  .timeline {
+    grid-column: 2;
+    margin-top: 10px;
+  }
+  .transport {
+    grid-column: 2;
+    margin: 0;
+  }
+  .play {
+    height: 44px;
+    width: 44px;
+  }
+  .transport .skip {
+    height: 38px;
+    width: 38px;
+  }
+  .source-label {
+    display: none;
+  }
+  .lyrics-panel {
+    margin: 0;
+  }
+  .lyrics-heading {
+    padding: 0 12px;
+  }
+  .lyric-player {
+    --amll-lp-font-size: 30px;
+    font-size: 30px;
+  }
+  .lyrics-footer {
+    padding: 0 12px;
+  }
+  .empty-lyrics,
+  .focus .empty-lyrics {
+    padding: 10px 20px;
+  }
+  .empty-lyrics h2 {
+    font-size: 26px;
+  }
+  .lyric-symbol {
+    display: none;
+  }
+  .empty-lyrics p {
+    margin-bottom: 12px;
+  }
+  .footer {
+    height: 35px;
+    padding: 0 22px;
+    font-size: 9px;
+  }
+}
+@media (max-height: 460px) and (min-height: 361px) and (min-width: 801px) {
+  .topbar {
+    height: 55px;
+  }
+  main {
+    height: calc(100% - 125px);
+  }
+  .artwork {
+    width: 110px;
+    margin-bottom: 10px;
+  }
+  .track-info h1 {
+    font-size: 17px;
+  }
+  .track-info p {
+    font-size: 12px;
+  }
+  .track-info div > span,
+  .source-label {
+    display: none;
+  }
+  .timeline {
+    margin-top: 10px;
+  }
+  .transport {
+    margin: 2px 8px;
+  }
+  .play {
+    width: 38px;
+    height: 38px;
+  }
+  .footer {
+    height: 30px;
+  }
+  .lyric-player {
+    --amll-lp-font-size: 28px;
+  }
+}
+@media (min-width: 700px) and (max-height: 360px) {
+  .mini main,
+  .mini.focus main {
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: 20px;
+    align-items: center;
+  }
+  .mini .lyrics-panel {
+    height: 100%;
+  }
+  .mini .lyric-player {
+    --amll-lp-font-size: 26px;
+  }
+}
+@media (min-width: 1800px) and (min-height: 950px) {
+  main {
+    max-width: 1850px;
+    grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+    gap: 80px;
+  }
+  .player-panel {
+    width: 500px;
+  }
+  .artwork {
+    width: min(100%, 41vh);
+    margin-bottom: 36px;
+  }
+  .track-info h1 {
+    font-size: 29px;
+  }
+  .track-info p {
+    font-size: 18px;
+  }
+  .lyric-player {
+    --amll-lp-font-size: clamp(40px, 3vw, 64px);
+  }
+}

@@ -1,0 +1,80 @@
+[package]
+name = "smtc-suite"
+version = "2.6.1"
+edition = "2024"
+authors = ["apoint123 <vpnzaph@outlook.com>"]
+description = "一个用于与 Windows 系统媒体控件 (SMTC) 和系统音频进行交互的 Rust 库。"
+documentation = "https://docs.rs/crate/smtc-suite"
+license = "MIT"
+repository = "https://github.com/apoint123/smtc-suite"
+readme = "README.md"
+keywords = ["windows", "smtc", "audio", "media-control", "wasapi"]
+categories = ["api-bindings", "multimedia::audio"]
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+bitflags = { version = "2.10", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+easer = "0.3"
+ferrous-opencc = "0.2"
+log = "0"
+rubato = "0.16"
+serde = "1.0"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+
+windows = { version = "0.62", features = [
+    "Media_Control",
+    "Storage_Streams",
+    "Win32_Media_Audio",
+    "Win32_Media_KernelStreaming",
+    "Win32_Media_Multimedia",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Security",
+] }
+windows-core = "0.62"
+
+[dev-dependencies]
+env_logger = "0.11"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+windows = { version = "0.62", features = [
+    "Win32_Graphics_Gdi",
+    "Win32_System_WinRT",
+    "Win32_System_LibraryLoader",
+] }
+
+
+[build-dependencies]
+cbindgen = "0.29"
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+
+cast_possible_wrap = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
+
+items_after_statements = "allow"
+missing_errors_doc = "allow"
+
+[profile.dev]
+debug = "full"

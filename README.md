@@ -1,0 +1,133 @@
+# AMLL Companion
+
+基于 [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics) 的 Windows 桌面音乐伴侣，为支持 Windows SMTC 的播放器提供 Apple Music 风格的歌词界面。
+
+**音乐仍由 Apple Music 等源播放器播放。** 本项目不提供音乐库，不下载、解码或捕获音频。
+
+## 功能
+
+- **连接 Windows 媒体会话**：内置 UniLyric 使用的 smtc-suite 引擎，读取曲名、歌手、专辑、封面和进度；默认优先连接 Apple Music，也可以手动选择其他会话。
+- **同步歌词**：使用 AMLL 渲染逐词高亮、滚动、模糊与背景光效；支持逐行歌词、翻译及音译。
+- **悬浮窗**：封面与信息置顶，歌词居中，底部采用紧凑控制和细进度条；支持调整尺寸、置顶、全屏和减少动态效果。
+- **播放控制**：播放/暂停、上一首/下一首、进度跳转、随机和循环。实际可用操作取决于源播放器的 SMTC 支持。
+- **时间校正**：全局及单曲偏移各支持 ±10 秒，并在本机保存。点击歌词行可以跳转播放。
+
+无需另外启动 UniLyric 或配置 WebSocket。本项目复用其引擎与部分歌词模块，不包含 UniLyric 完整 GUI。
+
+## 歌词来源与默认选择
+
+| 来源 | 当前接入能力 |
+| --- | --- |
+| [AMLL TTML DB / API](https://api.amll.dev) | TTML，包括逐词时间轴及附加信息 |
+| 网易云音乐 | YRC 逐词、LRC 逐行及可用的翻译、音译 |
+| 酷狗音乐 | 按歌曲标识查询同步 LRC |
+| [LRCLIB](https://lrclib.net/docs) | 同步 LRC，含原生 HTTP 备用请求通道 |
+
+四个来源同时查询，单个来源失败不会阻断其他来源。先按歌名、歌手和录音版本筛选；有时长数据的候选还会校验时长。繁简体、联合歌手和 feat. 信息会做匹配处理，Live、Remix 等版本标记不会直接删除。
+
+**默认按实际解析出来的歌词质量优选，而非固定优先某个库：**
+
+1. 是否具有真实逐词时间轴；仅有 TTML 格式或“逐词”标签不算。
+2. 逐词时间轴覆盖率。
+3. 翻译覆盖率。
+4. 音译覆盖率。
+5. 和声、对唱标注。
+
+质量相同时保留原有匹配顺序。为控制请求量，每个来源最多下载三个最接近的兼容候选；AMLL 只有能确认属于同一目录录音的多份提交才参与自动比较。无法明确匹配时交由用户选择，也可以随时打开歌词区的搜索按钮手动切换。
+
+自动选择在查询完成后应用，不在播放中反复替换。切歌会取消旧查询，防止旧歌词覆盖新曲目。LRCLIB 查询成功后在本机缓存 7 天，失败或空结果不缓存。
+
+## 运行
+
+系统要求：Windows 10 2004 或更新版本、Windows x64，以及 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。
+
+运行自行构建或已取得的便携包：
+
+1. 将整个 ZIP 解压到同一文件夹。
+2. 运行 `AMLL Companion.exe`，保留旁边的 `unilyric-bridge.exe` 和 `wwwroot`。
+3. 在 Apple Music 或其他支持 SMTC 的播放器中播放歌曲。
+4. 若未连接到预期播放器，在设置的“播放来源”中选择对应会话。
+
+便携包自带 .NET 运行时，不需要用户安装 Rust、Node.js 或 .NET SDK。源码仓库不包含构建产物。
+
+| 操作 | 快捷键 / 入口 |
+| --- | --- |
+| 播放 / 暂停 | 空格 |
+| 切换全屏 | F11 |
+| 退出全屏 | Esc |
+| 悬浮窗 / 置顶 | 顶部窗口按钮 / 图钉 |
+| 歌词偏移、播放来源 | 设置 |
+
+## 从源码构建
+
+需要：
+
+- Windows x64、.NET 10 SDK、Node.js 22 或更新版本。
+- 支持项目 Cargo.lock 的 Rust stable MSVC 工具链。
+- Visual Studio C++ 构建工具及 Windows SDK。
+- WebView2 Runtime。
+
+```powershell
+git clone https://github.com/deutdrsium/AMLL-Companion.git
+cd AMLL-Companion
+npm ci
+npm start
+```
+
+`npm start` 会构建 Rust 桥接程序、前端和桌面宿主。Rust 依赖使用 `--locked` 构建；前端依赖由 `package-lock.json` 固定。
+
+```powershell
+npm run dev          # 浏览器界面预览；不连接原生 SMTC
+npm run build        # TypeScript 检查和前端构建
+npm run build:bridge # 构建内置 Rust 引擎
+npm run pack         # 生成 release/ 下的 Windows x64 便携目录与 ZIP
+```
+
+## 测试
+
+```powershell
+npm test                         # 时钟、匹配、请求回退和歌词质量排序
+npm run test:desktop              # 构建并运行 WebView2 + 真实 SMTC 测试发布端
+node tests/lyrics-live.mjs        # AMLL 实际 API 查询
+node tests/providers-live.mjs     # 跨曲风的网易云 / 酷狗查询与同步歌词下载
+node tests/providers-desktop.mjs  # 新来源在桌面中渲染；先完成桌面构建
+node tests/fallback-live.mjs      # LRCLIB 请求通道回归；先完成桌面构建
+```
+
+在线测试需要网络，结果受第三方目录与服务状态影响。桌面测试使用不播放音频的 SMTC 测试会话，覆盖延迟封面更新、控制、暂停/恢复/跳转、切歌、偏移、不同窗口尺寸、置顶及全屏。测试输出位于被 Git 忽略的 `test-results/`。
+
+`--automation` 仅用于测试，会开放本机 CDP 9223；正常启动不开放调试端口。请勿同时运行多个自动化测试。
+
+## 数据与限制
+
+- 查询歌词会向上述来源发送曲名、歌手等元数据，以及获取歌词需要的歌曲标识；不发送音频。
+- 偏移设置与 LRCLIB 缓存保存在本机。应用不要求用户登录音乐平台。
+- 无法保证每首歌曲、每个录音版本都有同步歌词。质量排序依据数据结构，不代表已逐首校验时间轴与实际音频；纯器乐曲不会生成歌词。
+- 第三方接口可能变更、限流或暂时不可用。QQ 接口在当前实测中返回空结果，因此未启用。
+- SMTC 信息和控制能力由源播放器决定；当前引擎以标准播放速率为前提，非 1 倍速不保证同步。音量请在源播放器或系统混音器中调整。
+- 程序目前未签名。本项目不是 Apple 官方产品，也不包含商业音乐或封面资源。
+
+## 项目结构
+
+```text
+src/                         React 界面、AMLL 渲染和歌词查询编排
+shared/                      匹配、时钟、HTTP 回退与歌词质量排序
+tests/                       单元测试、联网验证和桌面集成测试
+native/                      WPF + WebView2 宿主
+  unilyric-bridge/            Rust SMTC 桥接及歌词请求适配
+  vendor/                    保留许可与修改说明的上游源码
+  SmtcFixture/               真实 Windows SMTC 测试发布端
+scripts/                     构建及打包脚本
+licenses/                    第三方许可文本
+```
+
+## 许可与致谢
+
+项目采用 **[AGPL-3.0-only](LICENSE)**，与使用的 AMLL 组件许可保持一致。第三方组件保留其各自许可，并不因本项目的许可声明而重新授权。
+
+- [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics)：歌词渲染和背景组件，AGPL-3.0-only。
+- [UniLyric](https://github.com/apoint123/Unilyric)：SMTC 集成参考、歌词查询与解析模块，MIT。
+- [smtc-suite](https://github.com/apoint123/smtc-suite)：Windows 媒体会话引擎，MIT。包含本项目针对延迟封面和旧曲封面回写的补丁。
+- [OpenCC JS](https://github.com/nk2028/opencc-js)：繁简转换，MIT；字典等附加声明见许可目录。
+
+固定的上游版本、许可文本及本地修改说明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)、[SMTC 补丁说明](native/vendor/smtc-suite/PATCHES.md) 和 [歌词模块说明](native/vendor/LYRICS-PATCHES.md)。

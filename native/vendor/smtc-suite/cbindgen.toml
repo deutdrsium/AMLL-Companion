@@ -1,0 +1,3 @@
+language = "C"
+include_guard = "SMTC_SUITE_H"
+pragma_once = true

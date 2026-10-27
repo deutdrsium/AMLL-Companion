@@ -1,0 +1,23 @@
+[package]
+name = "lyrics_helper_core"
+version = "0.2.1"
+edition = "2024"
+authors = ["apoint123 <vpnzaph@outlook.com>"]
+description = "lyrics_helper_rs 的核心类型。"
+homepage = "https://github.com/apoint123/Unilyric"
+repository = "https://github.com/apoint123/Unilyric"
+license = "MIT"
+keywords = ["lyrics", "lrc", "parser", "types", "core"]
+categories = ["multimedia::audio", "parsing", "text-processing"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde_json = "1.0"
+thiserror = "2"
+strum = "0.27"
+strum_macros = "0.27"
+serde = { version = "1", features = ["derive"] }
+derive_builder = "0.20"
+bitflags = { version = "2.9", features = ["serde"] }

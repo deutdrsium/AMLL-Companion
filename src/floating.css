@@ -1,0 +1,92 @@
+.cover-glow {
+  position: absolute;
+  inset: -15%;
+  z-index: -2;
+  background-size: cover;
+  background-position: center;
+  filter: blur(72px) saturate(1.5);
+  opacity: .22;
+  pointer-events: none;
+}
+.light-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.light-bloom::before, .light-bloom::after {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(ellipse at 25% 20%, #ffe0b84a, transparent 48%);
+  animation: drift-light 18s ease-in-out infinite alternate;
+}
+.light-bloom::after {
+  background: radial-gradient(ellipse at 80% 70%, #bdc9ff35, transparent 48%);
+  animation-delay: -11s;
+  animation-duration: 23s;
+}
+@keyframes drift-light { to { transform: translate(9%, 6%) scale(1.08); opacity: .6; } }
+.reduced-motion .light-bloom::before, .reduced-motion .light-bloom::after { animation: none; }
+
+/* The floating player follows the phone's cover → lyrics → playback layout. */
+.mini main, .mini.focus main {
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr) 25px 42px;
+  padding: 12px 20px 14px;
+  gap: 12px 14px;
+  align-items: stretch;
+}
+.mini .titlebar { background: transparent; border-bottom: 0; }
+.mini .player-panel, .mini.focus .player-panel { display: contents; }
+.mini .artwork, .mini.focus .artwork {
+  width: 64px;
+  height: 64px;
+  grid-column: 1;
+  grid-row: 1;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px #120d202b;
+  transform: none;
+}
+.mini .artwork .empty-art { height: 64px; border-radius: 8px; }
+.mini .vinyl { width: 46px; height: 46px; }
+.mini .track-info { grid-column: 2; grid-row: 1; align-self: center; }
+.mini .track-info h1, .mini.focus .track-info h1 { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+.mini .track-info p { font-size: 12px; color: #fff9; }
+.mini .lyrics-panel { grid-column: 1 / -1; grid-row: 2; width: 100%; height: 100%; }
+.mini .lyric-player { --amll-lp-font-size: clamp(23px, 6.7vw, 31px); font-size: clamp(23px, 6.7vw, 31px); }
+.mini .amll-lyric-player.dom { --amll-lp-line-padding-x: .15em; }
+.mini .timeline { grid-column: 1 / -1; grid-row: 3; align-self: center; margin: 0; position: relative; padding: 0 31px; }
+.mini .timeline input { height: 3px; background: linear-gradient(to right, #fff9 var(--progress), #ffffff29 var(--progress)); }
+.mini .timeline input::-webkit-slider-thumb { width: 7px; height: 7px; }
+.mini .timeline > div { display: flex; position: absolute; inset: -5px 0 auto; margin: 0; pointer-events: none; font-size: 9px; font-variant-numeric: tabular-nums; color: #fff6; }
+.mini .transport { grid-column: 1 / -1; grid-row: 4; margin: 0 14px; align-self: center; justify-content: space-around; }
+.mini .transport .icon, .mini .transport .skip { width: 34px; height: 34px; }
+.mini .play { width: 40px; height: 40px; }
+.mini .transport .skip svg { width: 23px; height: 23px; }
+.mini .transport .play svg { width: 27px; height: 27px; }
+.mini .transport .icon:first-child svg, .mini .transport .icon:last-child svg { width: 16px; height: 16px; opacity: .65; }
+.mini .empty-lyrics h2 { color: #ffffffe0; }
+.mini .shade { background: linear-gradient(0deg, #0d101b35, #100e1410 70%); }
+@media (max-height: 380px) {
+  .mini main, .mini.focus main { grid-template-columns: 44px minmax(0, 1fr); grid-template-rows: 44px minmax(0, 1fr) 12px 30px; padding: 4px 14px 7px; gap: 5px 10px; }
+  .mini .artwork, .mini.focus .artwork, .mini .artwork .empty-art { width: 44px; height: 44px; }
+  .mini .vinyl { width: 32px; height: 32px; }
+  .mini .track-info h1, .mini.focus .track-info h1 { font-size: 13px; margin-bottom: 3px; }
+  .mini .track-info p { font-size: 10px; }
+  .mini .lyric-player { --amll-lp-font-size: 21px; font-size: 21px; }
+  .mini .play, .mini .transport .icon, .mini .transport .skip { width: 28px; height: 28px; }
+  .mini .transport .play svg { width: 22px; height: 22px; }
+  .mini .transport .skip svg { width: 20px; height: 20px; }
+  .mini .timeline > div { font-size: 8px; inset-block-start: -4px; }
+}
+@media (min-width: 700px) and (max-height: 360px) {
+  .mini main, .mini.focus main { grid-template-columns: 50px 190px minmax(0, 1fr); grid-template-rows: 50px minmax(0, 1fr) 18px 32px; }
+  .mini .artwork, .mini.focus .artwork { width: 50px; height: 50px; }
+  .mini .track-info { grid-column: 2; }
+  .mini .timeline { grid-column: 1 / 3; grid-row: 3; }
+  .mini .transport { grid-column: 1 / 3; grid-row: 4; }
+  .mini .lyrics-panel { grid-column: 3; grid-row: 1 / 5; padding-left: 10px; }
+}

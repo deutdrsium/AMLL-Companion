@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+.reference/
+.tools/
+native/unilyric-bridge/target/
+*.log
+*.tsbuildinfo
+test-results/
+native/bin/
+native/obj/
+native/SmtcFixture/bin/
+native/SmtcFixture/obj/

@@ -1,0 +1,23 @@
+[package]
+name = "unilyric-bridge"
+version = "0.4.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# UniLyric engine revision with documented cover-event fixes; see ../vendor/smtc-suite/PATCHES.md.
+smtc-suite = { path = "../vendor/smtc-suite" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "io-std"] }
+serde_json = "1"
+base64 = "0.22"
+lyrics_helper_lite = { path = "../vendor/lyrics_helper_lite", default-features = false }
+lyrics_helper_core = { path = "../vendor/lyrics_helper_core" }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+
+[patch.crates-io]
+lyrics_helper_core = { path = "../vendor/lyrics_helper_core" }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

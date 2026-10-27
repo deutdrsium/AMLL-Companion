@@ -1,0 +1,35 @@
+{
+  "name": "amll-companion",
+  "version": "0.5.1",
+  "private": true,
+  "description": "Windows SMTC companion with AMLL lyrics",
+  "author": "AMLL Companion contributors",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "start": "npm run build:bridge && npm run build && dotnet run --project native/Companion.csproj -c Release",
+    "pack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pack.ps1",
+    "test": "node --test tests/*.test.mjs",
+    "test:desktop": "npm run build:bridge && npm run build && dotnet build native/Companion.csproj -c Release && dotnet build native/SmtcFixture/SmtcFixture.csproj -c Release && node tests/native.mjs",
+    "build:bridge": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-bridge.ps1"
+  },
+  "dependencies": {
+    "@applemusic-like-lyrics/core": "0.6.0",
+    "@applemusic-like-lyrics/lyric": "1.1.0",
+    "@applemusic-like-lyrics/react": "0.6.0",
+    "lucide-react": "^0.468.0",
+    "opencc-js": "^1.4.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.64.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}
