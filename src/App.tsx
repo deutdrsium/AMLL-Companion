@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { getLyrics, searchLyrics } from "./lyrics";
 import { lyricDetails } from '../shared/lyrics-quality.mjs';
+import { providerNames } from '../shared/provider-lyrics.mjs';
 import {
   PlaybackClock,
   readOffsets,
@@ -244,12 +245,12 @@ export default function App() {
     const music = state.music;
     const timer = setTimeout(async () => {
       try {
-        const { items, match } = await searchLyrics(music, controller.signal);
+        const { items, match, warning } = await searchLyrics(music, controller.signal);
         if (controller.signal.aborted) return;
         setCandidates(items);
         if (!match) {
           setLyricStatus(
-            items.length ? "找到相关歌词，请确认歌曲版本" : "各来源未找到匹配的同步歌词",
+            warning || (items.length ? "找到相关歌词，请确认歌曲版本" : "各来源未找到匹配的同步歌词"),
           );
           return;
         }
@@ -412,7 +413,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.5</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.6</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
@@ -756,7 +757,7 @@ export default function App() {
               <p className="hint">
                 F11 切换全屏，Esc
                 退出全屏。悬浮窗默认置顶，可通过图钉切换。自动歌词查询会将曲名和歌手发送至
-                AMLL、网易云、酷狗音乐及 LRCLIB，发送曲名、歌手等元数据并比较歌词质量。
+                AMLL、网易云、酷狗、QQ、酷我、咪咕及 LRCLIB。没有可用匹配时，再使用 DuckDuckGo 搜索并解析网页 LRC。
               </p>
             </>
           ) : (
@@ -769,8 +770,9 @@ export default function App() {
                   <button key={s.id} onClick={() => selectSong(s)}>
                     <strong>{s.musicNames.join(" / ")}{s.id === selectedSongId ? ' · 当前使用' : ''}</strong>
                     <span>
-                      {s.artistNames.join(" / ")} · {s.albumNames.join(" / ")} · {s.resolvedLyrics?.source || (s.source === 'netease' ? '网易云音乐' : s.source === 'kugou' ? '酷狗音乐' : s.source === 'lrclib' ? 'LRCLIB' : 'AMLL')}
+                      {s.artistNames.join(" / ")} · {s.albumNames.join(" / ")} · {s.resolvedLyrics?.source || providerNames[s.source || 'amll']}
                     </span>
+                    {s.sourceUrl && <span className="lyric-details" title={s.sourceUrl}>{s.sourceUrl}</span>}
                     <span className="lyric-details">{s.resolvedLyrics ? lyricDetails(s.resolvedLyrics.lines)
                       : s.inspectionError ? `检测失败：${s.inspectionError}（可点击重试）` : '正在检测逐词、翻译、音译、和声及对唱…'}</span>
                   </button>

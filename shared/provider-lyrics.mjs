@@ -1,7 +1,13 @@
 import { bestMatch, normalize, simplify } from './matching.mjs';
 import { lyricQuality, resolveBest } from './lyrics-quality.mjs';
 
-export const providerNames = { kugou: '酷狗音乐', netease: '网易云音乐', lrclib: 'LRCLIB', amll: 'AMLL' };
+export const providerNames = { kugou: '酷狗音乐', netease: '网易云音乐', qq: 'QQ 音乐', kuwo: '酷我音乐', migu: '咪咕音乐', web: '网页 LRC', lrclib: 'LRCLIB', amll: 'AMLL' };
+export const catalogueProviders = ['netease', 'kugou', 'qq', 'kuwo', 'migu'];
+const decode = s => String(s || '').replace(/&(?:nbsp|amp|quot|apos|lt|gt);|&#(?:x[0-9a-f]+|\d+);/gi, entity => {
+  if (entity[1] !== '#') return ({'&nbsp;':' ', '&amp;':'&', '&quot;':'"', '&apos;':"'", '&lt;':'<', '&gt;':'>'})[entity.toLowerCase()];
+  const n = entity[2].toLowerCase() === 'x' ? parseInt(entity.slice(3),16) : parseInt(entity.slice(2),10);
+  return n <= 0x10ffff ? String.fromCodePoint(n) : entity;
+});
 export async function providerRequest(provider, operation, data, signal, bridge = globalThis.window?.companion) {
   signal.throwIfAborted();
   if (!bridge?.providerQuery) throw new Error('多源歌词需要新版 Windows 客户端');
@@ -19,8 +25,8 @@ export function compatibleSongs(rows, provider, music) {
   return [...new Map(rows.map(row => [row.provider_id, row])).values()].filter(row => row.provider_name === provider && typeof row.provider_id === 'string'
     && typeof row.title === 'string' && Array.isArray(row.artists))
     .map(row => ({ id: `${provider}:${row.provider_id}`, source: provider, providerData: row,
-      musicNames: [row.title], artistNames: row.artists.map(a => a.name).filter(n => typeof n === 'string'),
-      albumNames: [row.album || ''], duration: row.duration }))
+      musicNames: [decode(row.title)], artistNames: row.artists.map(a => a.name).filter(n => typeof n === 'string').map(decode),
+      albumNames: [decode(row.album)], duration: row.duration }))
     .filter(song => bestMatch([song], music))
     .sort((a,b) => Number(normalize(b.albumNames[0]) === normalize(music.albumName))
       - Number(normalize(a.albumNames[0]) === normalize(music.albumName))
@@ -40,8 +46,19 @@ export async function getProviderLyrics(song, signal, request = providerRequest)
       || l.endTime < l.startTime || !Array.isArray(l.words)
       || l.words.some(w => typeof w.word !== 'string' || !Number.isFinite(w.startTime) || !Number.isFinite(w.endTime))))
     throw new Error(`${providerNames[song.source]} 此版本没有同步歌词`);
+  if (!hasLyricContent(data.lines, song)) throw new Error(`${providerNames[song.source]} 此版本仅有歌曲署名，没有歌词正文`);
   const source = `${providerNames[song.source]} · ${lyricQuality(data.lines)[0] ? '逐词同步' : '逐行同步'}`;
   return { lines: data.lines, source, authors: source };
+}
+export function hasLyricContent(lines, song) {
+  return lines.some(line => {
+    const text = line.words.map(w => w.word).join('').trim();
+    if (!text || /^(?:作词|作曲|编曲|词|曲|制作人|演唱|歌手|专辑|lyrics\s*(?:by)?|written\s*by|composed\s*(?:by)?|produced\s*(?:by)?|arranged\s*(?:by)?)\s*[:：]/i.test(text)) return false;
+    const titles = song.musicNames || [];
+    const creditName = value => normalize(value.replace(/\([^)]*\)|（[^）]*）/g, ''));
+    return !titles.some(title => normalize(text) === normalize(title)
+      || (song.artistNames || []).some(artist => creditName(text) === creditName(`${title}${artist}`)));
+  });
 }
 export async function searchProvider(provider, music, signal, request = providerRequest) {
   let items = [];

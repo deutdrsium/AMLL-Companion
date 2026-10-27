@@ -8,6 +8,7 @@ try {
  for(let i=0;i<100;i++){try{if((await fetch('http://127.0.0.1:9223/json/version')).ok)break;}catch{}await new Promise(r=>setTimeout(r,200));}
  browser=await chromium.connectOverCDP('http://127.0.0.1:9223');page=browser.contexts()[0].pages()[0];
  await page.waitForURL('https://companion.local/index.html');
+ await page.evaluate(()=>{const original=window.companion.providerQuery;window.companion={...window.companion,providerQuery:r=>['qq','kuwo','migu','web'].includes(r.provider)?Promise.resolve([]):original(r)};});
  await browser.contexts()[0].route('https://api.amll.dev/**',route=>{
   if(!process.env.TEST_QUALITY) return route.fulfill({status:503,body:'source unavailable'});
   const url=new URL(route.request().url());

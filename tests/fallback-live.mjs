@@ -10,7 +10,7 @@ try {
  browser=await chromium.connectOverCDP('http://127.0.0.1:9223');page=browser.contexts()[0].pages()[0];
  await page.waitForURL('https://companion.local/index.html');
  // Isolate LRCLIB transport regression from the new native providers.
- await page.evaluate(()=>{window.companion.providerQuery=async()=>{throw Error('disabled in LRCLIB transport test');};});
+ await page.evaluate(()=>{window.companion={...window.companion,providerQuery:async()=>{throw Error('disabled in LRCLIB transport test');}};});
  let lrclibRequests=0;
  if(process.env.TEST_RETRY) {
   await page.evaluate(()=>localStorage.removeItem('lrclib-search-cache-v1'));

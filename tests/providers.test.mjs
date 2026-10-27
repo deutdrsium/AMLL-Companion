@@ -27,6 +27,11 @@ test('untimed and malformed responses cannot become synchronized lyrics',async()
  for(const payload of [{lines:[]},{lines:[{startTime:0,endTime:0,words:[]}]},{lines:[{startTime:1000,endTime:500,words:[]}]}]){
  await assert.rejects(getProviderLyrics({source:'netease'},new AbortController().signal,async()=>payload));}
 });
+test('credit-only QRC is not preferred over a complete lyric',async()=>{
+ const song={source:'qq',musicNames:['Test Song'],artistNames:['Test Artist']};
+ const lines=['Test Song - Test Artist','Lyrics by：Writer','Composed by：Composer','Produced by：Producer'].map((word,i)=>({startTime:i*1000,endTime:(i+1)*1000,words:[{word,startTime:i*1000,endTime:(i+1)*1000}]}));
+ await assert.rejects(getProviderLyrics(song,new AbortController().signal,async()=>({lines})),/没有歌词正文/);
+});
 test('track change cancels native work and rejects stale results',async()=>{
  const c=new AbortController();let canceled=false,resolve;
  const pending=providerRequest('netease','search',{},c.signal,{providerQuery:()=>new Promise(r=>resolve=r),cancelProvider:async()=>{canceled=true;}});

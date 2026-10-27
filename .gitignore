@@ -11,3 +11,5 @@ native/bin/
 native/obj/
 native/SmtcFixture/bin/
 native/SmtcFixture/obj/
+tests/NativeLyricsTests/bin/
+tests/NativeLyricsTests/obj/

@@ -2,7 +2,8 @@ import { parseTTML, parseLrc } from "@applemusic-like-lyrics/lyric";
 import type { Song, Music } from "./types";
 import { findLyrics } from "../shared/lyrics-search.mjs";
 import { searchLrclib } from "../shared/lrclib.mjs";
-import { searchProvider, getProviderLyrics, canAutoSelect } from '../shared/provider-lyrics.mjs';
+import { searchProvider, getProviderLyrics, canAutoSelect, catalogueProviders } from '../shared/provider-lyrics.mjs';
+import { searchWebLyrics } from '../shared/web-lyrics.mjs';
 import { compareLyrics, lyricQuality, resolveBest, amllCandidates } from '../shared/lyrics-quality.mjs';
 const base = "https://api.amll.dev/v1/lyrics";
 const cache = new Map<number | string, Song>();
@@ -29,7 +30,7 @@ async function request(
 export async function searchLyrics(
   music: Music,
   signal: AbortSignal,
-): Promise<{ items: Song[]; match: Song | null }> {
+): Promise<{ items: Song[]; match: Song | null; warning?: string }> {
   const results = await Promise.allSettled([
     (async () => {
       const result = await findLyrics(music, request, signal);
@@ -37,8 +38,7 @@ export async function searchLyrics(
       if (result.match) result.match = await resolveBest(amllCandidates(result, music), getLyrics, signal);
       return result;
     })(),
-    searchProvider('netease', music, signal),
-    searchProvider('kugou', music, signal),
+    ...catalogueProviders.map(provider => searchProvider(provider, music, signal)),
     (async () => {
       const result = await searchLrclib(music, signal);
       result.match = await resolveBest(result.items.filter(s => canAutoSelect(s, music)), getLyrics, signal);
@@ -51,6 +51,16 @@ export async function searchLyrics(
   const matches = successful.flatMap(r => r.match ? [r.match] : []) as Song[];
   matches.sort(compareLyrics);
   items.sort(compareLyrics);
+  if (!matches.length) {
+    try {
+      const web = await searchWebLyrics(music, signal);
+      items.push(...web.items as Song[]);
+      if (web.match) return { items, match: web.match as Song };
+    } catch (e) {
+      signal.throwIfAborted();
+      return { items, match: null, warning: e instanceof Error ? e.message : '网页歌词兜底暂不可用' };
+    }
+  }
   if (!items.length && !successful.length)
     throw new Error('歌词来源暂时均不可用，请稍后重试');
   if (!items.length && results.some(r => r.status === 'rejected'))
@@ -60,7 +70,7 @@ export async function searchLyrics(
 export async function getLyrics(song: Song, signal: AbortSignal) {
   signal.throwIfAborted();
   if (song.resolvedLyrics) return song.resolvedLyrics;
-  if (song.source === 'kugou' || song.source === 'netease') return getProviderLyrics(song, signal);
+  if (song.source && catalogueProviders.includes(song.source)) return getProviderLyrics(song, signal);
   if (song.source === 'lrclib') {
     signal.throwIfAborted();
     const lines = parseLrc(song.lyrics || '');

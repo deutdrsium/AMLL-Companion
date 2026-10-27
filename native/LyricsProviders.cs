@@ -14,10 +14,14 @@ internal sealed class LyricsProviders : IDisposable
         var id = input.GetProperty("requestId").GetString() ?? "";
         var provider = input.GetProperty("provider").GetString();
         var operation = input.GetProperty("operation").GetString();
-        if (provider is not ("kugou" or "netease") || operation is not ("search" or "get") || id.Length is < 1 or > 100 || active.ContainsKey(id))
+        if (provider is not ("kugou" or "netease" or "qq" or "kuwo" or "migu" or "web") || operation is not ("search" or "get") || id.Length is < 1 or > 100 || active.ContainsKey(id))
             throw new ArgumentException("无效歌词查询");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(22));
         active[id] = timeout;
+        if (provider == "web") {
+            try { return await WebLyricsHttp.QueryAsync(operation!, input.GetProperty("data"), timeout.Token); }
+            finally { active.Remove(id); }
+        }
         using var process = new Process { StartInfo = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "unilyric-bridge.exe"), "--lyrics") {
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true,
             RedirectStandardOutput = true, RedirectStandardError = true,
