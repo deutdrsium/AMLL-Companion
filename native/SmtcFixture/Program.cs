@@ -78,6 +78,9 @@ while (Console.ReadLine() is { } line)
     if (line == "next") { lock(sync) { title = "夜色慢慢落下"; position=0; anchor=Stopwatch.GetTimestamp(); Publish(true); } }
     if (line.StartsWith("seek:") && double.TryParse(line[5..], out var value)) { lock(sync) { position=value; anchor=Stopwatch.GetTimestamp(); Publish(); } }
     if (line == "snapshot") Console.WriteLine(JsonSerializer.Serialize(new { position = Current(), playing, title }));
+    if (line.StartsWith("duration:") && double.TryParse(line[9..], out var newDuration)) {
+        lock(sync) { duration = newDuration; Publish(true); }
+    }
     if (line.StartsWith("cover:")) {
         var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(line[6..]);
         lock(sync) {

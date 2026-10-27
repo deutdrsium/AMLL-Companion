@@ -10,6 +10,13 @@ test('cross-source matching excludes covers and incompatible recordings',()=>{
  assert.equal(canAutoSelect({...items[0],albumNames:['Live']},music),false);
  assert.equal(canAutoSelect({...items[0],duration:330000},music),false);
 });
+test('青花瓷 can auto-select while SMTC duration is still missing',()=>{
+ const track={musicName:'青花瓷',artists:['周杰倫'],albumName:'我很忙',duration:0};
+ const [song]=compatibleSongs([{...row,provider_name:'kugou',title:'青花瓷',album:'我很忙',duration:239000}],'kugou',track);
+ assert.equal(canAutoSelect(song,track),true);
+ assert.equal(canAutoSelect(song,{...track,albumName:''}),false);
+ assert.equal(canAutoSelect(song,{...track,duration:180000}),false);
+});
 test('a missing lyric entry does not block another recording in the same source',async()=>{
  let count=0; const r=await searchProvider('netease',music,new AbortController().signal,async(p,op)=>{
  if(op==='search')return [row,{...row,provider_id:'2'}];

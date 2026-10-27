@@ -673,6 +673,11 @@ code {
   font-size: 11px;
   color: #ffffff65;
 }
+.candidates .lyric-details {
+  margin-top: 7px;
+  color: #ffffffb0;
+  line-height: 1.7;
+}
 .toast {
   position: absolute;
   bottom: 65px;

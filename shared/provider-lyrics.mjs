@@ -28,7 +28,9 @@ export function compatibleSongs(rows, provider, music) {
 }
 export function canAutoSelect(song, music) {
   const version = text => (text.match(/live|remix|acoustic|instrumental|演唱会|现场|伴奏/gi) || []).map(s=>s.toLowerCase()).sort().join();
-  return music.duration > 0 && song.duration > 0 && Math.abs(song.duration-music.duration) <= 3000
+  const knownDuration = music.duration > 0 && song.duration > 0;
+  const sameAlbum = !!normalize(music.albumName) && song.albumNames.some(a => normalize(a) === normalize(music.albumName));
+  return (knownDuration ? Math.abs(song.duration-music.duration) <= 3000 : sameAlbum)
     && version(simplify(song.albumNames.join(' '))) === version(simplify(music.albumName));
 }
 export async function getProviderLyrics(song, signal, request = providerRequest) {

@@ -32,11 +32,16 @@ export function bestMatch(items, music) {
       ),
   );
   const candidates = album.length ? album : exact;
-  if (candidates.length === 1) return candidates[0];
+  const durationMatches = candidates.filter(s => !(music.duration > 0 && s.duration > 0)
+    || Math.abs(s.duration - music.duration) <= 3000);
+  if (!durationMatches.length) return null;
+  if (durationMatches.length === 1) return durationMatches[0];
   // Multiple submissions for one catalogue recording are not different recordings.
   const sameRecording = ["appleMusicIds", "isrcs", "spotifyIds", "ncmMusicIds", "qqMusicIds"].some(field =>
-    candidates[0]?.[field]?.some(id => candidates.every(item => item[field]?.includes(id))));
-  if (sameRecording) return [...candidates].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0) || b.id - a.id)[0];
-  // shortcut: SMTC has no catalogue ID; genuinely ambiguous recordings need manual selection.
+    durationMatches[0]?.[field]?.some(id => durationMatches.every(item => item[field]?.includes(id))));
+  // Matching title, artist and album are enough to compare lyric submissions automatically.
+  const sameDuration = music.duration > 0 && durationMatches.every(s => s.duration > 0);
+  if (sameRecording || album.length || sameDuration) return [...durationMatches].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+    || String(b.id).localeCompare(String(a.id), undefined, {numeric:true}))[0];
   return null;
 }

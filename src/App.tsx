@@ -27,6 +27,7 @@ import {
   PinOff,
 } from "lucide-react";
 import { getLyrics, searchLyrics } from "./lyrics";
+import { lyricDetails } from '../shared/lyrics-quality.mjs';
 import {
   PlaybackClock,
   readOffsets,
@@ -137,6 +138,7 @@ export default function App() {
   });
   const [lines, setLines] = useState<LyricLine[]>([]);
   const [candidates, setCandidates] = useState<Song[]>([]);
+  const [selectedSongId, setSelectedSongId] = useState<Song['id'] | null>(null);
   const [lyricStatus, setLyricStatus] = useState("等待音乐响起");
   const [authors, setAuthors] = useState("");
   const [lyricSource, setLyricSource] = useState("");
@@ -155,6 +157,7 @@ export default function App() {
         state.music.musicName,
         state.music.artists,
         state.music.albumName,
+        Math.round(state.music.duration / 1000),
       ])
     : "";
   const offsetKey = songOffsetKey(state.music);
@@ -225,6 +228,7 @@ export default function App() {
     activeRequest.current = controller;
     setLines([]);
     setCandidates([]);
+    setSelectedSongId(null);
     setAuthors("");
     setLyricSource("");
     setPicker(false);
@@ -248,6 +252,7 @@ export default function App() {
         const result = await getLyrics(match, controller.signal);
         if (!controller.signal.aborted) {
           setLines(result.lines);
+          setSelectedSongId(match.id);
           setAuthors(result.authors);
           setLyricSource(result.source);
           setLyricStatus("逐词歌词");
@@ -264,6 +269,28 @@ export default function App() {
     };
   }, [key, retry]);
 
+  useEffect(() => {
+    if (!picker) return;
+    const controller = new AbortController();
+    const pending = candidates.filter(s => !s.resolvedLyrics && !s.inspectionError);
+    let cursor = 0;
+    const inspect = async () => {
+      while (cursor < pending.length && !controller.signal.aborted) {
+        const song = pending[cursor++];
+        try {
+          const resolvedLyrics = await getLyrics(song, controller.signal);
+          if (!controller.signal.aborted) setCandidates(current => current.map(s =>
+            s.id === song.id ? { ...s, resolvedLyrics } : s));
+        } catch (e) {
+          if (!controller.signal.aborted) setCandidates(current => current.map(s =>
+            s.id === song.id ? { ...s, inspectionError: e instanceof Error ? e.message : '检测失败' } : s));
+        }
+      }
+    };
+    void Promise.all(Array.from({length: 3}, inspect));
+    return () => controller.abort();
+  }, [picker, key]);
+
   async function selectSong(song: Song) {
     activeRequest.current?.abort();
     const controller = new AbortController();
@@ -275,6 +302,9 @@ export default function App() {
       const result = await getLyrics(song, controller.signal);
       if (!controller.signal.aborted) {
         setLines(result.lines);
+        setSelectedSongId(song.id);
+        setCandidates(current => current.map(s => s.id === song.id
+          ? { ...s, resolvedLyrics: result, inspectionError: undefined } : s));
         setAuthors(result.authors);
         setLyricSource(result.source);
         setLyricStatus("逐词歌词");
@@ -378,7 +408,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.1</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.2</span>
         </span>
         <div className="window-actions">
           {mini && (
@@ -777,17 +807,17 @@ export default function App() {
           ) : (
             <>
               <p className="hint">
-                选择与当前录音一致的版本。点击歌词行可跳转播放。
+                已默认自动优选匹配版本。以下能力根据实际歌词检测，逐词百分比为主歌词行覆盖率。
               </p>
               <div className="candidates">
                 {candidates.map((s) => (
                   <button key={s.id} onClick={() => selectSong(s)}>
-                    <strong>{s.musicNames.join(" / ")}</strong>
+                    <strong>{s.musicNames.join(" / ")}{s.id === selectedSongId ? ' · 当前使用' : ''}</strong>
                     <span>
-                      {s.artistNames.join(" / ")} · {s.albumNames.join(" / ")} · {s.resolvedLyrics?.source || (s.source === 'netease' ? '网易云音乐' : s.source === 'kugou' ? '酷狗音乐' : s.source === 'lrclib' ? 'LRCLIB · 逐行' : 'AMLL')}
-                      {s.resolvedLyrics?.lines.some(l => l.translatedLyric?.trim()) ? ' · 含翻译' : ''}
-                      {s.resolvedLyrics?.lines.some(l => l.romanLyric?.trim()) ? ' · 含音译' : ''}
+                      {s.artistNames.join(" / ")} · {s.albumNames.join(" / ")} · {s.resolvedLyrics?.source || (s.source === 'netease' ? '网易云音乐' : s.source === 'kugou' ? '酷狗音乐' : s.source === 'lrclib' ? 'LRCLIB' : 'AMLL')}
                     </span>
+                    <span className="lyric-details">{s.resolvedLyrics ? lyricDetails(s.resolvedLyrics.lines)
+                      : s.inspectionError ? `检测失败：${s.inspectionError}（可点击重试）` : '正在检测逐词、翻译、音译、和声及对唱…'}</span>
                   </button>
                 ))}
               </div>

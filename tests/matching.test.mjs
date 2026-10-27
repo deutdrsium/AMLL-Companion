@@ -2,12 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bestMatch } from '../shared/matching.mjs';
 import { findLyrics } from '../shared/lyrics-search.mjs';
-test('matching rejects wrong artists and ambiguous recordings', () => {
+test('matching rejects wrong artists and automatically resolves same-album submissions', () => {
   const song = { id: 1, musicNames: ['A song'], artistNames: ['Artist'], albumNames: ['Album'] };
   const track = { musicName: 'A SONG', artists: ['Artist'], albumName: 'Album' };
   assert.equal(bestMatch([song], track), song);
   assert.equal(bestMatch([song], { ...track, artists: ['Different'] }), null);
-  assert.equal(bestMatch([song, { ...song, id: 2 }], track), null);
+  assert.equal(bestMatch([song, { ...song, id: 2 }], track).id, 2);
+  assert.equal(bestMatch([song, { ...song, id: 2 }], {...track, albumName:''}), null);
 });
 
 const sunny = { id: 1, musicNames: ['晴天'], artistNames: ['周杰伦'], albumNames: ['叶惠美'] };
@@ -16,7 +17,7 @@ test('multiple lyric submissions for one catalogue recording select the newest',
   const older = { ...sunny, appleMusicIds: ['535824738'], createdAt: 10 };
   const newer = { ...older, id: 3, createdAt: 20 };
   assert.equal(bestMatch([older, newer], track), newer);
-  assert.equal(bestMatch([older, {...newer, appleMusicIds: ['another-recording']}], track), null);
+  assert.equal(bestMatch([older, {...newer, appleMusicIds: ['another-recording']}], track).id, 3);
 });
 test('traditional metadata matches simplified library without accepting a live recording', () => {
   assert.equal(bestMatch([sunny], track), sunny);

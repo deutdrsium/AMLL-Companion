@@ -13,9 +13,11 @@ test('fallback rejects short clips, wrong artists and live versions despite exac
   assert.equal(lines[0].startTime, 1000);
   assert.equal(lines[1].startTime, 3000);
 });
-test('unknown duration requires manual selection, server errors remain errors', async () => {
+test('unknown duration can select a matching album; server errors remain errors', async () => {
   const result = await searchLrclib({...music, duration:0}, new AbortController().signal, async () => ({ok:true,json:async()=>[row]}));
-  assert.equal(result.match, null);
+  assert.equal(result.match.id, -1);
+  const unknownAlbum = await searchLrclib({...music,duration:0,albumName:''},new AbortController().signal,async()=>({ok:true,json:async()=>[row]}));
+  assert.equal(unknownAlbum.match,null);
   await assert.rejects(searchLrclib(music, new AbortController().signal, async()=>({ok:false,status:503})), /503/);
 });
 test('album edition beats unrelated compilations with the same duration', async () => {

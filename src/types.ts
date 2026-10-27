@@ -37,6 +37,7 @@ export interface PlayerState {
 export interface Song {
   source?: 'amll' | 'lrclib' | 'kugou' | 'netease';
   providerData?: unknown;
+  inspectionError?: string;
   resolvedLyrics?: { lines: import('@applemusic-like-lyrics/core').LyricLine[]; source: string; authors: string };
   duration?: number;
   id: number | string;

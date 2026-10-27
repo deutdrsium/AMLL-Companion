@@ -1,5 +1,6 @@
 import { bestMatch, normalize, simplify, titleWithoutCredits } from './matching.mjs';
 import { lrclibRows } from './lyrics-http.mjs';
+import { canAutoSelect } from './provider-lyrics.mjs';
 
 export async function searchLrclib(music, signal, fetcher = fetch) {
   const items = new Map();
@@ -18,8 +19,7 @@ export async function searchLrclib(music, signal, fetcher = fetch) {
   }
   const all = [...items.values()];
   const albumKey = text => normalize(text.replace(/\s*[\[（(][^\]）)]*[\]）)]\s*$/, ''));
-  const compatible = all.filter(s => music.duration > 0 && Math.abs(s.duration - music.duration) <= 3000
-    && (!/(live|演唱会|演唱會|现场|現場)/i.test(s.albumNames[0]) || /(live|演唱会|演唱會|现场|現場)/i.test(music.albumName)));
+  const compatible = all.filter(s => canAutoSelect(s, music));
   compatible.sort((a,b) => Number(albumKey(b.albumNames[0]) === albumKey(music.albumName)) - Number(albumKey(a.albumNames[0]) === albumKey(music.albumName))
     || Math.abs(a.duration-music.duration)-Math.abs(b.duration-music.duration) || b.id-a.id);
   return { items: all, match: compatible[0] || null };
