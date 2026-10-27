@@ -6,11 +6,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>AMLL Companion</AssemblyName>
-    <Version>0.5.2</Version>
+    <Version>0.5.3</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <DefaultItemExcludes>$(DefaultItemExcludes);SmtcFixture/**;unilyric-bridge/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/app.ico" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
     <Content Include="../dist/**/*" Link="wwwroot/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="unilyric-bridge/target/release/unilyric-bridge.exe" Link="unilyric-bridge.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />

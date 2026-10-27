@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shell;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -29,6 +30,7 @@ internal sealed class MainWindow : Window
     {
         args = arguments;
         Title = "AMLL Companion"; Width = 1280; Height = 820; MinWidth = 320; MinHeight = 200;
+        Icon = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize; Background = new SolidColorBrush(Color.FromRgb(25, 23, 27));
         WindowChrome.SetWindowChrome(this, new WindowChrome { CaptionHeight = 0, ResizeBorderThickness = new Thickness(5), CornerRadius = new CornerRadius(0), GlassFrameThickness = new Thickness(0) });

@@ -11,7 +11,7 @@ internal static class LyricsHttp
     {
         if (string.IsNullOrWhiteSpace(title) || title.Length > 1000) throw new ArgumentException("无效歌曲名");
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://lrclib.net/api/search?track_name=" + Uri.EscapeDataString(title));
-        request.Headers.UserAgent.ParseAdd("AMLLCompanion/0.5.2");
+        request.Headers.UserAgent.ParseAdd("AMLLCompanion/0.5.3");
         request.Headers.Accept.ParseAdd("application/json");
         request.Headers.CacheControl = new() { NoCache = true };
         using var response = await Client.SendAsync(request);

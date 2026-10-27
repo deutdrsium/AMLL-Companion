@@ -8,6 +8,7 @@
 
 - **连接 Windows 媒体会话**：内置 UniLyric 使用的 smtc-suite 引擎，读取曲名、歌手、专辑、封面和进度；默认优先连接 Apple Music，也可以手动选择其他会话。
 - **同步歌词**：使用 AMLL 渲染逐词高亮、滚动、模糊与背景光效；支持逐行歌词、翻译及音译。
+- **应用图标**：沿用标题栏的白色音符，包含 EXE、窗口/任务栏和网页页签图标；Windows 图标覆盖 16–256 像素。`native/Assets/app.ico` 可用 `powershell -NoProfile -File scripts/build-icon.ps1` 重新生成。
 - **悬浮窗**：封面与信息置顶，歌词居中，底部采用紧凑控制和细进度条；支持调整尺寸、置顶、全屏和减少动态效果。
 - **播放控制**：播放/暂停、上一首/下一首、进度跳转、随机和循环。实际可用操作取决于源播放器的 SMTC 支持。
 - **时间校正**：全局及单曲偏移各支持 ±10 秒，并在本机保存。点击歌词行可以跳转播放。
@@ -129,6 +130,7 @@ licenses/                    第三方许可文本
 - [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics)：歌词渲染和背景组件，AGPL-3.0-only。
 - [UniLyric](https://github.com/apoint123/Unilyric)：SMTC 集成参考、歌词查询与解析模块，MIT。
 - [smtc-suite](https://github.com/apoint123/smtc-suite)：Windows 媒体会话引擎，MIT。包含本项目针对延迟封面和旧曲封面回写的补丁。
+- [Lucide](https://github.com/lucide-icons/lucide)：界面音符及应用图标几何，ISC；保留 Feather 原始归属声明。
 - [OpenCC JS](https://github.com/nk2028/opencc-js)：繁简转换，MIT；字典等附加声明见许可目录。
 
 固定的上游版本、许可文本及本地修改说明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)、[SMTC 补丁说明](native/vendor/smtc-suite/PATCHES.md) 和 [歌词模块说明](native/vendor/LYRICS-PATCHES.md)。

@@ -8,3 +8,5 @@
 The bridge transports upstream SMTC events and commands and runs lyric-provider requests and parsers. The application does not capture audio.
 
 - UniLyric lyrics_helper_lite / lyrics_helper_core, revision ab2adb98290f292b7a03412fef13dc44d6e9786a — MIT. Source and local changes: native/vendor/LYRICS-PATCHES.md. License: licenses/UniLyric-lyrics-MIT.txt.
+
+- Lucide / lucide-react: https://github.com/lucide-icons/lucide — ISC (with original Feather MIT attribution). Title-bar Music2 geometry is also used in public/app-icon.svg and native/Assets/app.ico; icon background and rasterization are local adaptations. License: licenses/Lucide-ISC.txt.
