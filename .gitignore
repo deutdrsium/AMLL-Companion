@@ -13,3 +13,6 @@ native/SmtcFixture/bin/
 native/SmtcFixture/obj/
 tests/NativeLyricsTests/bin/
 tests/NativeLyricsTests/obj/
+__pycache__/
+tests/AlignmentTests/bin/
+tests/AlignmentTests/obj/

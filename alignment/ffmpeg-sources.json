@@ -1,0 +1,79 @@
+[
+  {
+    "name": "nv-codec-headers",
+    "source_url": "https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n13.0.19.0.tar.gz",
+    "sha256": "86d15d1a7c0ac73a0eafdfc57bebfeba7da8264595bf531cf4d8db1c22940116"
+  },
+  {
+    "name": "amf-headers",
+    "source_url": "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/releases/download/v1.5.2/AMF-headers-v1.5.2.tar.gz",
+    "sha256": "d3c12eb324edf05e214608b6a395a51dd95770ed9d45520185d6c3a206811c99"
+  },
+  {
+    "name": "libvpl",
+    "source_url": "https://github.com/intel/libvpl/archive/refs/tags/v2.16.0.tar.gz",
+    "sha256": "d60931937426130ddad9f1975c010543f0da99e67edb1c6070656b7947f633b6"
+  },
+  {
+    "name": "nasm",
+    "source_url": "https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/nasm-2.16.03.tar.xz",
+    "sha256": "1412a1c760bbd05db026b6c0d1657affd6631cd0a63cddb6f73cc6d4aa616148"
+  },
+  {
+    "name": "ffmpeg",
+    "source_url": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+    "sha256": "8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
+  },
+  {
+    "name": "lamer",
+    "source_url": "https://codeload.github.com/basswood-io/bwlame/tar.gz/3ffd14f5531e0e5078e31eba4b2fb6ccc277b843",
+    "sha256": "b9b255f8b58e99c052eb7cfc78daea096d967d08c080fe74455b212e00132995",
+    "upstream_archive_sha256": "81839b16fdc401e20b73389d05f32a7656008f43bcb960feff290d6f08fc109e",
+    "note": "Upstream repository renamed lamer to bwlame, changing the archive root. This pins the commit of the original v3.101.0 annotated tag (5bebc96aa9f1bc326a3b46f7f0142315c15c0837)."
+  },
+  {
+    "name": "opus",
+    "source_url": "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz",
+    "sha256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1"
+  },
+  {
+    "name": "dav1d",
+    "source_url": "https://code.videolan.org/videolan/dav1d/-/archive/1.5.4/dav1d-1.5.4.tar.bz2",
+    "sha256": "2abfb0c89212e6e4733a54e0ae509ec00a5b845a6360946f918806e14aedb011"
+  },
+  {
+    "name": "libsvtav1",
+    "source_url": "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v4.2.0/SVT-AV1-v4.2.0.tar.bz2",
+    "sha256": "512f2ea5649e3e76c2dddcc25c2556fb67a9582baaab207c9c96161c94659dad"
+  },
+  {
+    "name": "vpx",
+    "source_url": "https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz",
+    "sha256": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a"
+  },
+  {
+    "name": "png",
+    "source_url": "https://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz",
+    "sha256": "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775"
+  },
+  {
+    "name": "webp",
+    "source_url": "https://github.com/webmproject/libwebp/archive/refs/tags/v1.6.0.tar.gz",
+    "sha256": "93a852c2b3efafee3723efd4636de855b46f9fe1efddd607e1f42f60fc8f2136"
+  },
+  {
+    "name": "libvmaf",
+    "source_url": "https://github.com/Netflix/vmaf/archive/refs/tags/v3.2.1.tar.gz",
+    "sha256": "5df7386911bc15fd1ca783132528748d219768ae4fc5f8e0b61184f041648092"
+  },
+  {
+    "name": "x264",
+    "source_url": "https://code.videolan.org/videolan/x264/-/archive/b35605ace3ddf7c1a5d67a2eb553f034aef41d55/x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.bz2",
+    "sha256": "6eeb82934e69fd51e043bd8c5b0d152839638d1ce7aa4eea65a3fedcf83ff224"
+  },
+  {
+    "name": "x265",
+    "source_url": "https://github.com/Multicorewareinc/x265/releases/download/4.3/x265_4.3.tar.gz",
+    "sha256": "83c53e4c8bbb8f1e33ed59e10a7d621d1d7801ca853910c3eb41f038b8ffb121"
+  }
+]

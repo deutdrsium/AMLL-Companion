@@ -17,6 +17,7 @@ internal sealed class MainWindow : Window
     private readonly WebView2 web = new();
     private readonly SmtcService smtc;
     private readonly LyricsProviders lyrics = new();
+    private readonly AlignmentService alignment = new();
     private readonly string[] args;
     private bool ready, floating, fullscreen, closed;
     private Rect normalBounds = new(100, 100, 1280, 820);
@@ -37,8 +38,9 @@ internal sealed class MainWindow : Window
         web.Margin = new Thickness(5); Content = web;
         smtc = new SmtcService(Dispatcher);
         smtc.Changed += state => { if (ready) Post(new { type = "player:state", value = state }); };
+        alignment.Progress += value => { if (ready && !closed) Post(new { type = "alignment:progress", value }); };
         Loaded += async (_, _) => await InitializeAsync();
-        Closed += (_, _) => { closed = true; lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
+        Closed += (_, _) => { closed = true; alignment.Dispose(); lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
     }
 
     private async Task InitializeAsync()
@@ -84,6 +86,9 @@ internal sealed class MainWindow : Window
                 case "lyricsSearch": result = await LyricsHttp.SearchAsync(value.GetString() ?? ""); break;
                 case "providerQuery": result = await lyrics.QueryAsync(value); break;
                 case "providerCancel": lyrics.Cancel(value.GetString() ?? ""); break;
+                case "alignmentStatus": result = alignment.Status(); break;
+                case "alignLyrics": result = await alignment.AlignAsync(value); break;
+                case "alignmentCancel": alignment.Cancel(value.GetString() ?? ""); break;
                 case "command": await smtc.CommandAsync(value.GetProperty("command").GetString() ?? "", value); break;
                 case "sessions": await smtc.SelectAsync(value.GetString() ?? "auto"); break;
                 case "window": WindowAction(value.GetString() ?? ""); result = WindowSnapshot(); break;
@@ -154,7 +159,15 @@ internal sealed class MainWindow : Window
         }
         fullscreen = !fullscreen;
     }
-    private void Post(object value) { if (!closed && web.CoreWebView2 is not null) web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(value, JsonOptions)); }
+    private void Post(object value)
+    {
+        if (closed || Dispatcher.HasShutdownStarted) return;
+        if (!Dispatcher.CheckAccess()) {
+            Dispatcher.BeginInvoke(new Action(() => Post(value)));
+            return;
+        }
+        if (web.CoreWebView2 is not null) web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(value, JsonOptions));
+    }
 
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
@@ -167,20 +180,23 @@ internal sealed class MainWindow : Window
     (() => {
       if (location.origin !== 'https://companion.local') return;
       let next = 0;
-      const pending = new Map(), listeners = new Set(), windowListeners = new Set();
+      const pending = new Map(), listeners = new Set(), windowListeners = new Set(), alignmentListeners = new Set();
       chrome.webview.addEventListener('message', ({data}) => {
         if(data.type === 'player:state') listeners.forEach(fn => fn(data.value));
         if(data.type === 'window:state') windowListeners.forEach(fn => fn(data.value));
+        if(data.type === 'alignment:progress') alignmentListeners.forEach(fn => fn(data.value));
         if(data.type === 'reply') { const request=pending.get(data.id); if(!request)return; pending.delete(data.id); clearTimeout(request.timer); data.error ? request.reject(new Error(data.error)) : request.resolve(data.result); }
       });
       const invoke = (method, value=null) => new Promise((resolve,reject) => {
-        const id=++next; const timer=setTimeout(()=>{pending.delete(id);reject(new Error('系统请求超时'));},method==='providerQuery'?30000:15000);
+        const id=++next; const timer=setTimeout(()=>{pending.delete(id);reject(new Error('系统请求超时'));},method==='alignLyrics'?750000:method==='providerQuery'?30000:15000);
         pending.set(id,{resolve,reject,timer}); chrome.webview.postMessage({id,method,value});
       });
       window.companion = Object.freeze({
         native: true, snapshot:()=>invoke('snapshot'), command:value=>invoke('command',value),
         lyricsSearch:title=>invoke('lyricsSearch',title),
         providerQuery:value=>invoke('providerQuery',value), cancelProvider:id=>invoke('providerCancel',id),
+        alignmentStatus:()=>invoke('alignmentStatus'), alignLyrics:value=>invoke('alignLyrics',value), cancelAlignment:id=>invoke('alignmentCancel',id),
+        subscribeAlignment:fn=>{alignmentListeners.add(fn);return()=>alignmentListeners.delete(fn)},
         subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},
         selectSession:id=>invoke('sessions',id), window:action=>invoke('window',action), windowState:()=>invoke('windowState'),
         subscribeWindow:fn=>{windowListeners.add(fn);return()=>windowListeners.delete(fn)},

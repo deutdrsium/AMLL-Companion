@@ -10,3 +10,11 @@ The bridge transports upstream SMTC events and commands and runs lyric-provider 
 - UniLyric lyrics_helper_lite / lyrics_helper_core, revision ab2adb98290f292b7a03412fef13dc44d6e9786a — MIT. Source and local changes: native/vendor/LYRICS-PATCHES.md. License: licenses/UniLyric-lyrics-MIT.txt.
 
 - Lucide / lucide-react: https://github.com/lucide-icons/lucide — ISC (with original Feather MIT attribution). Title-bar Music2 geometry is also used in public/app-icon.svg and native/Assets/app.ico; icon background and rasterization are local adaptations. License: licenses/Lucide-ISC.txt.
+
+## Local alignment runtime (0.6.0)
+
+The portable distribution includes an unmodified CPython 3.12.10 embedded runtime (PSF license, `alignment/python/LICENSE.txt`), Stable-ts 2.19.1 and OpenAI Whisper code/model weights (MIT), PyTorch and its dependencies, and PyAV 19.0.2 (BSD-3-Clause). Exact installed versions and upstream license-file paths are recorded in `alignment/DEPENDENCIES.json`. Original package license files and third-party notices remain inside `alignment/python/Lib/site-packages`, including each package's `.dist-info/licenses` directory. The Whisper small weights are unmodified; https://github.com/openai/whisper provides the MIT license covering code and weights.
+
+PyAV dynamically loads FFmpeg 9.0.2 libraries from `alignment/python/Lib/site-packages/av.libs`. The upstream build is https://github.com/PyAV-Org/pyav-ffmpeg/tree/9.0.2-1. Its FFmpeg library reports LGPL-3.0-or-later, but the build also includes x264 and x265 (GPL-2.0-or-later); those dependencies retain their own licenses, regardless of the FFmpeg library's runtime label. Corresponding source archives, build scripts and upstream patches are included in `alignment/sources`, with archive URLs and SHA-256 hashes in `manifest.json`. Consult the COPYING/LICENSE files in those sources for their full terms. This application remains AGPL-3.0-only. The FFmpeg DLLs are replaceable; no restriction on modifying or debugging these libraries is imposed.
+
+Stable-ts: https://github.com/jianfch/stable-ts. PyAV: https://github.com/PyAV-Org/PyAV. PyTorch: https://github.com/pytorch/pytorch. Python: https://www.python.org. No audio recording is bundled; downloaded audio is used only for local alignment and removed after the task.

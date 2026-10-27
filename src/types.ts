@@ -62,6 +62,10 @@ declare global {
   interface Window {
     companion?: {
       native: boolean;
+      alignmentStatus(): Promise<{available:boolean}>;
+      alignLyrics(value:unknown): Promise<any>;
+      cancelAlignment(id:string): Promise<void>;
+      subscribeAlignment(callback:(value:{requestId:string;message:string})=>void):()=>void;
       providerQuery(value: unknown): Promise<any>;
       cancelProvider(id: string): Promise<void>;
       lyricsSearch(title: string): Promise<{status: number; rows: unknown}>;

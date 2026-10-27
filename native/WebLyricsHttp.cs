@@ -76,6 +76,32 @@ internal static class WebLyricsHttp
             throw new ArgumentException("无效的公网歌词链接");
         return url;
     }
+    internal static async Task DownloadAudioAsync(string value, string path, CancellationToken token)
+    {
+        var url = ValidateUrl(value);
+        for (var redirects = 0; redirects <= 4; redirects++) {
+            using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
+            if ((int)response.StatusCode is >= 300 and < 400 && response.Headers.Location is { } location) {
+                url = ValidateUrl(new Uri(url, location).AbsoluteUri); continue;
+            }
+            response.EnsureSuccessStatusCode();
+            var type = response.Content.Headers.ContentType?.MediaType ?? "";
+            if (!type.StartsWith("audio/") && type != "application/octet-stream") throw new InvalidOperationException("聚合接口未返回音频");
+            const int maxBytes = 40 * 1024 * 1024;
+            if (response.Content.Headers.ContentLength > maxBytes) throw new InvalidOperationException("音频超过 40 MB 限制");
+            await using var input = await response.Content.ReadAsStreamAsync(token);
+            await using var output = File.Create(path);
+            var buffer = new byte[65536];
+            int count, total = 0;
+            while ((count = await input.ReadAsync(buffer, token)) > 0) {
+                total += count;
+                if (total > maxBytes) throw new InvalidOperationException("音频超过 40 MB 限制");
+                await output.WriteAsync(buffer.AsMemory(0, count), token);
+            }
+            return;
+        }
+        throw new InvalidOperationException("音频重定向过多");
+    }
     public static async Task<JsonElement> QueryAsync(string operation, JsonElement data, CancellationToken token)
     {
         string value;

@@ -1,0 +1,4 @@
+stable-ts==2.19.1
+torch==2.14.1
+torchaudio==2.11.0
+av==19.0.2
