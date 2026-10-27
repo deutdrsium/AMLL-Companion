@@ -1,0 +1,11 @@
+import {spawn} from 'node:child_process';
+import {mkdir,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const run=input=>new Promise((resolve,reject)=>{const p=spawn('native/unilyric-bridge/target/release/unilyric-bridge.exe',['--lyrics'],{windowsHide:true});let out='';p.stdout.on('data',d=>out+=d);p.on('error',reject);p.on('exit',()=>{try{const r=JSON.parse(out);if(!r.ok)throw Error(r.error);resolve(r.data);}catch(e){reject(e);}});p.stdin.end(JSON.stringify(input));});
+const rows=await run({provider:'netease',operation:'search',data:{title:'more than words',artists:['羊文学'],album:'12 hugs (like butterflies)',duration:289785}});
+const song=rows.find(s=>s.provider_id==='2100653087');assert.ok(song,'expected album recording in catalogue');
+const result=await run({provider:'netease',operation:'get',data:song});
+const main=result.lines.filter(l=>!l.isBG&&l.words.some(w=>w.word.trim()));
+const report={title:song.title,provider:'netease',id:song.provider_id,lines:main.length,translation:main.filter(l=>l.translatedLyric.trim()).length,romanization:main.filter(l=>l.romanLyric.trim()).length};
+assert.ok(main.length>30);assert.equal(report.translation,report.lines,'complete translation must survive parsing');assert.equal(report.romanization,report.lines,'complete romanization must survive parsing');
+await mkdir('test-results',{recursive:true});await writeFile('test-results/annotations-live.json',JSON.stringify(report,null,2));console.log('PASS',JSON.stringify(report));

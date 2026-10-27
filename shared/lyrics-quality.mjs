@@ -12,7 +12,8 @@ export function amllCandidates(result, music) {
 export function lyricDetails(lines) {
   const quality = lyricQuality(lines);
   return [quality[0] ? `逐词（${Math.round(quality[1] * 100)}%）` : '逐行',
-    `翻译：${quality[2] ? '有' : '无'}`, `音译：${quality[3] ? '有' : '无'}`,
+    `翻译：${quality[2] ? `有（${Math.round(quality[2] * 100)}%）` : '无'}`,
+    `音译：${quality[3] ? `有（${Math.round(quality[3] * 100)}%）` : '无'}`,
     `和声：${lines.some(l => l.isBG) ? '有' : '无'}`, `对唱：${lines.some(l => l.isDuet) ? '有' : '无'}`,
     `${lines.filter(l => !l.isBG && l.words?.some(w => w.word?.trim())).length} 行`].join(' · ');
 }

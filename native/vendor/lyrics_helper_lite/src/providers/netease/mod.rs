@@ -131,16 +131,16 @@ impl LyricProvider for NeteaseProvider {
             .ok_or_else(|| FetcherError::Provider("Lyric not found in API response".to_string()))?;
 
         let mut main_parsed = main_parsed_result?;
+        let uses_yrc = !main_parsed.is_line_timed_source;
 
-        let translation_content = api_response
-            .tlyric
-            .and_then(|t| t.lyric)
-            .filter(|s| !s.is_empty());
-
-        let romanization_content = api_response
-            .romalrc
-            .and_then(|r| r.lyric)
-            .filter(|s| !s.is_empty());
+        // YRC and LRC have different line boundaries and timestamp grids.
+        let select_annotation = |classic: Option<models::LyricData>, aligned: Option<models::LyricData>| {
+            let classic = classic.and_then(|l| l.lyric).filter(|s| !s.trim().is_empty());
+            let aligned = aligned.and_then(|l| l.lyric).filter(|s| !s.trim().is_empty());
+            if uses_yrc { aligned.or(classic) } else { classic }
+        };
+        let translation_content = select_annotation(api_response.tlyric, api_response.ytlrc);
+        let romanization_content = select_annotation(api_response.romalrc, api_response.yromalrc);
 
         let translation_lines = translation_content
             .map(|t| parse_lrc(&t).map(|p| p.lines))
@@ -157,5 +157,58 @@ impl LyricProvider for NeteaseProvider {
         main_parsed.source_name = "netease".to_string();
 
         Ok(main_parsed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn yrc_uses_its_own_translation_and_romanization_grid() {
+        let response = json!({"code":200,
+            "yrc":{"lyric":"[15270,7410](15270,400,0)alpha(15670,400,0) beta\n[22680,7550](22680,400,0)gamma(23080,400,0) delta"},
+            "lrc":{"lyric":"[00:15.243]alpha\n[00:22.421]beta\n[00:28.520]gamma\n[00:30.102]delta"},
+            "tlyric":{"lyric":"[00:15.243]old one\n[00:22.421]old two\n[00:28.520]old three"},
+            "romalrc":{"lyric":"[00:15.243]old roman one\n[00:22.421]old roman two"},
+            "ytlrc":{"lyric":"[00:15.270]aligned one\n[00:22.680]aligned two"},
+            "yromalrc":{"lyric":"[00:15.270]roman one\n[00:22.680]roman two"}
+        });
+        let parsed = NeteaseProvider.handle_lyrics_response(&response.to_string()).unwrap();
+        assert!(!parsed.is_line_timed_source);
+        assert_eq!(parsed.lines.len(), 2);
+        for (index, line) in parsed.lines.iter().enumerate() {
+            let track = &line.tracks[0];
+            assert_eq!(track.translations[0].text(), if index==0 {"aligned one"} else {"aligned two"});
+            assert_eq!(track.romanizations[0].text(), if index==0 {"roman one"} else {"roman two"});
+        }
+    }
+
+    #[test]
+    fn lrc_keeps_classic_annotations_even_if_yrc_annotations_exist() {
+        let response = json!({"code":200,
+            "lrc":{"lyric":"[00:01.000]first\n[00:02.000]second"},
+            "tlyric":{"lyric":"[00:01.000]classic translation"},
+            "romalrc":{"lyric":"[00:01.000]classic roman"},
+            "ytlrc":{"lyric":"[00:01.000]wrong grid translation"},
+            "yromalrc":{"lyric":"[00:01.000]wrong grid roman"}
+        });
+        let parsed = NeteaseProvider.handle_lyrics_response(&response.to_string()).unwrap();
+        assert!(parsed.is_line_timed_source);
+        assert_eq!(parsed.lines[0].tracks[0].translations[0].text(), "classic translation");
+        assert_eq!(parsed.lines[0].tracks[0].romanizations[0].text(), "classic roman");
+    }
+
+    #[test]
+    fn absent_or_empty_yrc_annotations_fall_back_independently() {
+        let response = json!({"code":200,
+            "yrc":{"lyric":"[1000,1000](1000,500,0)first(1500,500,0) word"},
+            "tlyric":{"lyric":"[00:01.000]classic translation"},
+            "romalrc":{"lyric":"[00:01.000]classic roman"},
+            "ytlrc":{"lyric":" "}
+        });
+        let parsed = NeteaseProvider.handle_lyrics_response(&response.to_string()).unwrap();
+        assert_eq!(parsed.lines[0].tracks[0].translations[0].text(), "classic translation");
+        assert_eq!(parsed.lines[0].tracks[0].romanizations[0].text(), "classic roman");
     }
 }

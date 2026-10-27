@@ -408,7 +408,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.3</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.4</span>
         </span>
         <div className="window-actions">
           {mini && (

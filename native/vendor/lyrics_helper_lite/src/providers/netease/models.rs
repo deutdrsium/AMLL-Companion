@@ -37,6 +37,8 @@ pub struct LyricApiResponse {
     pub tlyric: Option<LyricData>,
     pub romalrc: Option<LyricData>,
     pub yrc: Option<LyricData>,
+    pub ytlrc: Option<LyricData>,
+    pub yromalrc: Option<LyricData>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -5,6 +5,7 @@ Packages: lyrics_helper_lite 0.1.0 and lyrics_helper_core 0.2.1. MIT; original L
 
 Local changes to lyrics_helper_lite:
 - Reserve the AES block padding capacity before Netease EAPI encryption (upstream otherwise returns PadError).
+- Select YRC's ytlrc/yromalrc annotations when rendering YRC; retain tlyric/romalrc for LRC. These grids can differ in both timestamps and line segmentation. Synthetic parser regressions cover both grids and missing aligned annotations.
 - Expose parser module for the companion's Kugou LRC adapter.
 - Add QQ request comm parameters during compatibility investigation. QQ is not enabled in the app: live probes returned empty results for known songs.
 

@@ -32,7 +32,7 @@ test('AMLL quality ranking includes matching album variants and preserves unreso
 });
 test('candidate details explicitly report present and absent lyric features',()=>{
  const description=lyricDetails([line(true,'translation'),line(false)]);
- assert.match(description,/逐词（50%）/);assert.match(description,/翻译：有/);
+ assert.match(description,/逐词（50%）/);assert.match(description,/翻译：有（50%）/);
  assert.match(description,/音译：无/);assert.match(description,/和声：无/);
  assert.match(description,/对唱：无/);assert.match(description,/2 行/);
  assert.match(lyricDetails([line(false)]),/^逐行/);

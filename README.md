@@ -34,7 +34,7 @@
 4. 音译覆盖率。
 5. 和声、对唱标注。
 
-质量相同时保留原有匹配顺序。为控制请求量，每个来源最多下载三个最接近的兼容候选；同曲名、同歌手且同专辑的多份提交会自动比较，不再仅因目录 ID 不同就要求手选。时长暂缺时可凭完整专辑匹配自动选择，SMTC 补齐时长后重新校验；已知时长明显不符的候选仍被排除。元数据不足时交由用户选择，也可以随时打开歌词区的搜索按钮手动切换。候选列表逐项显示逐词覆盖率、翻译、音译、和声、对唱和主歌词行数；打开列表时自动检测尚未加载的版本，并显示检测失败状态。
+质量相同时保留原有匹配顺序。为控制请求量，每个来源最多下载三个最接近的兼容候选；同曲名、同歌手且同专辑的多份提交会自动比较，不再仅因目录 ID 不同就要求手选。时长暂缺时可凭完整专辑匹配自动选择，SMTC 补齐时长后重新校验；已知时长明显不符的候选仍被排除。元数据不足时交由用户选择，也可以随时打开歌词区的搜索按钮手动切换。候选列表逐项显示逐词覆盖率、翻译及音译覆盖率、和声、对唱和主歌词行数；打开列表时自动检测尚未加载的版本，并显示检测失败状态。
 
 自动选择在查询完成后应用，不在播放中反复替换。切歌会取消旧查询，防止旧歌词覆盖新曲目。LRCLIB 查询成功后在本机缓存 7 天，失败或空结果不缓存。
 
@@ -91,6 +91,9 @@ npm test                         # 时钟、匹配、请求回退和歌词质量
 npm run test:desktop              # 构建并运行 WebView2 + 真实 SMTC 测试发布端
 node tests/lyrics-live.mjs        # AMLL 实际 API 查询
 node tests/providers-live.mjs     # 跨曲风的网易云 / 酷狗查询与同步歌词下载
+node tests/annotations-live.mjs   # more than words 完整翻译 / 音译保留验证
+node tests/annotations-desktop.mjs # 桌面渲染和翻译 / 音译覆盖率（先构建桌面）
+cargo test --release --locked --manifest-path native/unilyric-bridge/Cargo.toml -p lyrics_helper_lite --lib # 网易云解析回归
 node tests/providers-desktop.mjs  # 新来源在桌面中渲染；先完成桌面构建
 node tests/fallback-live.mjs      # LRCLIB 请求通道回归；先完成桌面构建
 node tests/auto-selection-desktop.mjs # 青花瓷自动选择、延迟时长与候选详情（联网）
