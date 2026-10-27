@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   LyricPlayer,
   type LyricPlayerRef,
@@ -102,6 +102,8 @@ export function LiveLyrics({
   reduceMotion,
   seek,
   authors,
+  showTranslation,
+  showRomanization,
 }: {
   clock: PlaybackClock;
   lines: LyricLine[];
@@ -110,8 +112,14 @@ export function LiveLyrics({
   reduceMotion: boolean;
   seek(value: number): void;
   authors: string;
+  showTranslation: boolean;
+  showRomanization: boolean;
 }) {
   const player = useRef<LyricPlayerRef>(null);
+  const displayLines = useMemo(() => lines.map(line => ({ ...line,
+    translatedLyric: showTranslation ? line.translatedLyric : '',
+    romanLyric: showRomanization ? line.romanLyric : '',
+  })), [lines, showTranslation, showRomanization]);
   useEffect(() => {
     let frame = 0,
       revision = -1;
@@ -126,12 +134,12 @@ export function LiveLyrics({
     };
     frame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frame);
-  }, [clock, offset, lines]);
+  }, [clock, offset, displayLines]);
   return (
     <LyricPlayer
       ref={player}
       className="lyric-player"
-      lyricLines={lines}
+      lyricLines={displayLines}
       playing={playing}
       enableSpring={!reduceMotion}
       enableBlur={!reduceMotion}

@@ -16,7 +16,7 @@ try {
  assert.ok(id);await page.evaluate(id=>window.companion.selectSession(id),id);
  await page.getByRole('heading',{name:'青花瓷',exact:true}).waitFor();
  await page.locator('.lyric-player').waitFor({timeout:60000});
- assert.match(await page.locator('.lyrics-footer').innerText(),/酷狗音乐/);
+ assert.match(await page.locator('.lyrics-panel').getAttribute('data-source'),/酷狗音乐/);
  const before=searches;fixture.stdin.write('duration:239000\n');
  for(let i=0;i<100 && searches<=before;i++)await page.waitForTimeout(100);
  assert.ok(searches>before,'late SMTC duration must trigger automatic re-evaluation');

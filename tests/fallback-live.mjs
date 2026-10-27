@@ -34,7 +34,7 @@ try {
  assert.equal((await page.evaluate(()=>window.companion.snapshot())).selection,fixtureId);
  await page.getByRole('heading',{name:'七里香',exact:true}).waitFor();
  await page.locator('.lyric-player').waitFor({timeout:60000});
- assert.match(await page.locator('.lyrics-footer').innerText(),/LRCLIB/);
+ assert.match(await page.locator('.lyrics-panel').getAttribute('data-source'),/LRCLIB/);
  await page.screenshot({path:'test-results/native/qilixiang-live.png'});
  console.log('PASS: real LRCLIB synchronized lyrics rendered in WebView2 for 七里香');
  if(process.env.TEST_RETRY) {
@@ -44,7 +44,7 @@ try {
   await page.reload();
   await page.evaluate(()=>{window.companion.providerQuery=async()=>{throw Error('disabled in LRCLIB transport test');};});
   await page.locator('.lyric-player').waitFor({timeout:60000});
-  assert.match(await page.locator('.lyrics-footer').innerText(),/LRCLIB/);
+  assert.match(await page.locator('.lyrics-panel').getAttribute('data-source'),/LRCLIB/);
   assert.equal(lrclibRequests,1,'cached lyrics must survive reload without another failed request');
   console.log('PASS: persistent browser 503 recovered via native HTTP; cache survived reload');
  }

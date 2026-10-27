@@ -22,7 +22,7 @@ try {
   for(let i=0;i<100;i++){const snapshot=await page.evaluate(()=>window.companion.snapshot());fixtureId=snapshot.sessions.find(s=>/SmtcFixture/.test(s.id))?.id;if(fixtureId)break;await page.waitForTimeout(100);}
   assert.ok(fixtureId);await page.evaluate(id=>window.companion.selectSession(id),fixtureId);
   await page.getByRole('heading',{name:title,exact:true}).waitFor();
-  await page.waitForFunction(source=>document.querySelector('.lyrics-footer')?.textContent?.includes(source),source,{timeout:60000});
+  await page.waitForFunction(source=>document.querySelector('.lyrics-panel')?.getAttribute('data-source')?.includes(source),source,{timeout:60000});
   await page.locator('.lyric-player').waitFor();
   fixture.stdin.write('seek:60000\n');
   await page.waitForTimeout(2000);

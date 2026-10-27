@@ -148,6 +148,8 @@ export default function App() {
   const [reduceMotion, setReduceMotion] = useState(
     () => localStorage.getItem("reduce-motion") === "true",
   );
+  const [showTranslation, setShowTranslation] = useState(() => localStorage.getItem('show-translation') !== 'false');
+  const [showRomanization, setShowRomanization] = useState(() => localStorage.getItem('show-romanization') !== 'false');
   const clock = useRef(new PlaybackClock()).current;
   const activeRequest = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -213,6 +215,8 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("reduce-motion", String(reduceMotion));
   }, [reduceMotion]);
+  useEffect(() => { localStorage.setItem('show-translation', String(showTranslation)); }, [showTranslation]);
+  useEffect(() => { localStorage.setItem('show-romanization', String(showRomanization)); }, [showRomanization]);
   useEffect(() => {
     if (settings || picker) dialog.current?.showModal();
     else dialog.current?.close();
@@ -236,7 +240,7 @@ export default function App() {
       setLyricStatus("等待音乐响起");
       return;
     }
-    setLyricStatus("正在搜索 AMLL、网易云、酷狗音乐及 LRCLIB…");
+    setLyricStatus("正在检索歌词……");
     const music = state.music;
     const timer = setTimeout(async () => {
       try {
@@ -408,8 +412,20 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.4</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.5.5</span>
         </span>
+        {!mini && <div className="top-actions">
+          <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
+            <i />{state.connected ? "SMTC 已连接" : "等待播放"}
+          </button>
+          <button className="icon" title="悬浮窗" aria-label="切换悬浮窗" onClick={() => windowAction("floating")}>
+            <PictureInPicture2 size={18} />
+          </button>
+          <button className="icon" title="全屏 F11" aria-label={windowState.mode === "fullscreen" ? "退出全屏" : "全屏"} onClick={() => windowAction("fullscreen")}>
+            {windowState.mode === "fullscreen" ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+          <button className="icon" title="连接与显示设置" aria-label="设置" onClick={() => setSettings(true)}><Settings2 size={18} /></button>
+        </div>}
         <div className="window-actions">
           {mini && (
             <>
@@ -460,54 +476,6 @@ export default function App() {
           </button>
         </div>
       </header>
-      <nav className="topbar">
-        <div className="nav-title">
-          <span className="app-icon">
-            <AudioLines size={20} />
-          </span>
-          <div>
-            <strong>正在播放</strong>
-            <span>让音乐，留在此刻。</span>
-          </div>
-        </div>
-        <div className="top-actions">
-          <button
-            className={`connection ${state.connected ? "online" : ""}`}
-            onClick={() => setSettings(true)}
-          >
-            <i />
-            {state.connected ? "SMTC 已连接" : "等待播放"}
-          </button>
-          <button
-            className="icon"
-            title="悬浮窗"
-            aria-label="切换悬浮窗"
-            onClick={() => windowAction("floating")}
-          >
-            <PictureInPicture2 size={20} />
-          </button>
-          <button
-            className="icon"
-            title="全屏 F11"
-            aria-label={windowState.mode === "fullscreen" ? "退出全屏" : "全屏"}
-            onClick={() => windowAction("fullscreen")}
-          >
-            {windowState.mode === "fullscreen" ? (
-              <Minimize2 size={19} />
-            ) : (
-              <Maximize2 size={19} />
-            )}
-          </button>
-          <button
-            className="icon"
-            title="连接与显示设置"
-            aria-label="设置"
-            onClick={() => setSettings(true)}
-          >
-            <Settings2 size={20} />
-          </button>
-        </div>
-      </nav>
       <main>
         <section className="player-panel" aria-label="正在播放的歌曲">
           <div className={`artwork ${state.playing ? "playing" : ""}`}>
@@ -620,14 +588,13 @@ export default function App() {
           </div>
           <div className="source-label">
             <Radio size={13} />
-            <span>UniLyric 引擎 · 音乐由原播放器播放</span>
+            <span>UniLyric 引擎</span>
           </div>
         </section>
-        <section className="lyrics-panel" aria-label="同步歌词">
+        <section className="lyrics-panel" aria-label="同步歌词" data-source={lyricSource}>
           <div className="lyrics-heading">
             <span>
               <AudioLines size={16} />
-              {lines.length ? "实时歌词" : "歌词"}
             </span>
             <button
               className="icon"
@@ -645,7 +612,9 @@ export default function App() {
               lines={lines}
               offset={offset}
               playing={state.playing && state.connected}
-            reduceMotion={reduceMotion}
+              reduceMotion={reduceMotion}
+              showTranslation={showTranslation}
+              showRomanization={showRomanization}
               seek={seek}
               authors={authors}
             />
@@ -655,11 +624,7 @@ export default function App() {
                 <AudioLines size={34} strokeWidth={1.3} />
               </span>
               <h2>{state.music ? lyricStatus : "听见音乐\n看见每一句"}</h2>
-              <p>
-                {state.music
-                  ? "自动优选：逐词时间轴 → 翻译 → 音译"
-                  : "打开 Apple Music，播放即可自动连接。"}
-              </p>
+              {!state.music && <p>打开 Apple Music，播放即可自动连接。</p>}
               {!state.connected ? (
                 <button className="primary" onClick={() => setSettings(true)}>
                   选择播放器 <Radio size={16} />
@@ -680,11 +645,6 @@ export default function App() {
             </div>
           )}
           <div className="lyrics-footer">
-            <span>
-              {lines.length
-                ? `${lyricSource}${offset ? ` · ${offset > 0 ? "+" : ""}${offset} ms` : ""}`
-                : "APPLE MUSIC–LIKE LYRICS"}
-            </span>
             <button
               className="icon"
               aria-label={focus ? "退出专注模式" : "专注模式"}
@@ -696,20 +656,6 @@ export default function App() {
           </div>
         </section>
       </main>
-      <footer className="footer">
-        <span>
-          <i className={state.connected ? "green" : ""} />
-          {state.error ||
-            (!window.companion
-              ? "浏览器预览 · 启动桌面版即可自动连接"
-              : state.connected
-                ? "已连接 Windows 媒体会话"
-                : "等待 Apple Music 开始播放")}
-        </span>
-        <span>
-          AMLL <b>COMPANION</b>
-        </span>
-      </footer>
       <dialog
         ref={dialog}
         onCancel={closeDialog}
@@ -740,6 +686,15 @@ export default function App() {
                 </div>
                 {state.connected && <Check size={20} />}
               </div>
+              {state.error && <p className="hint" role="alert">{state.error}</p>}
+              <label className="setting">
+                <div><strong>显示翻译</strong><p>显示歌词提供的翻译。</p></div>
+                <input type="checkbox" aria-label="显示翻译" checked={showTranslation} onChange={e => setShowTranslation(e.target.checked)} />
+              </label>
+              <label className="setting">
+                <div><strong>显示音译</strong><p>显示歌词提供的罗马音等音译。</p></div>
+                <input type="checkbox" aria-label="显示音译" checked={showRomanization} onChange={e => setShowRomanization(e.target.checked)} />
+              </label>
               <label className="session-setting">
                 <span>播放来源</span>
                 <select

@@ -14,7 +14,7 @@ try {
  assert.ok(id);await page.evaluate(id=>window.companion.selectSession(id),id);
  await page.getByRole('heading',{name:'more than words',exact:true}).waitFor();
  await page.locator('.lyric-player').waitFor({timeout:60000});
- assert.match(await page.locator('.lyrics-footer').innerText(),/网易云音乐.*逐词/);
+ assert.match(await page.locator('.lyrics-panel').getAttribute('data-source'),/网易云音乐.*逐词/);
  fixture.stdin.write('seek:26000\n');await page.waitForTimeout(1800);
  await page.screenshot({path:'test-results/native/annotations-more-than-words.png'});
  await page.getByRole('button',{name:'选择歌词版本',exact:true}).click();

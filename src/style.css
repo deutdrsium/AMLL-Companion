@@ -107,6 +107,31 @@ input:disabled {
   font-weight: 400;
   letter-spacing: 0;
 }
+.titlebar .top-actions {
+  margin-left: auto;
+  margin-right: 14px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.titlebar .top-actions .icon {
+  width: 32px;
+  height: 30px;
+}
+.titlebar .connection {
+  height: 28px;
+  padding: 4px 10px;
+}
+.titlebar .brand {
+  white-space: nowrap;
+  min-width: 0;
+}
+.titlebar .window-actions {
+  flex-shrink: 0;
+}
+@media (max-width: 900px) {
+  .titlebar .brand > span { display: none; }
+  .titlebar .top-actions { margin-right: 6px; }
+}
 .window-actions {
   display: flex;
   height: 40px;
@@ -185,12 +210,12 @@ input:disabled {
   color: #ffffff80;
 }
 main {
-  height: calc(100% - 188px);
+  height: calc(100% - 40px);
   display: grid;
   grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
   max-width: 1450px;
   margin: auto;
-  padding: 0 52px 20px;
+  padding: 20px 52px;
   gap: 28px;
 }
 .player-panel {
@@ -477,7 +502,7 @@ main {
 }
 .lyrics-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   padding: 0 20px 0 25px;
   color: #ffffff38;
@@ -696,7 +721,7 @@ code {
     height: 75px;
   }
   main {
-    height: calc(100% - 165px);
+    height: calc(100% - 40px);
   }
   .artwork {
     width: min(100%, 30vh);

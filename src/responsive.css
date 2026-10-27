@@ -246,7 +246,7 @@ dialog {
   .focus main {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 165px minmax(0, 1fr);
-    height: calc(100% - 150px);
+    height: calc(100% - 40px);
     padding: 0 24px 12px;
     gap: 12px;
   }
@@ -338,7 +338,7 @@ dialog {
     height: 55px;
   }
   main {
-    height: calc(100% - 125px);
+    height: calc(100% - 40px);
   }
   .artwork {
     width: 110px;

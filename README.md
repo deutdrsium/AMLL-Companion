@@ -7,7 +7,7 @@
 ## 功能
 
 - **连接 Windows 媒体会话**：内置 UniLyric 使用的 smtc-suite 引擎，读取曲名、歌手、专辑、封面和进度；默认优先连接 Apple Music，也可以手动选择其他会话。
-- **同步歌词**：使用 AMLL 渲染逐词高亮、滚动、模糊与背景光效；支持逐行歌词、翻译及音译。
+- **同步歌词**：使用 AMLL 渲染逐词高亮、滚动、模糊与背景光效；支持逐行歌词、翻译及音译。在设置中可独立开关“显示翻译”和“显示音译”，选择在本机保存，对后续切歌和重启生效；隐藏不影响歌词版本评分。
 - **应用图标**：沿用标题栏的白色音符，包含 EXE、窗口/任务栏和网页页签图标；Windows 图标覆盖 16–256 像素。`native/Assets/app.ico` 可用 `powershell -NoProfile -File scripts/build-icon.ps1` 重新生成。
 - **悬浮窗**：封面与信息置顶，歌词居中，底部采用紧凑控制和细进度条；支持调整尺寸、置顶、全屏和减少动态效果。
 - **播放控制**：播放/暂停、上一首/下一首、进度跳转、随机和循环。实际可用操作取决于源播放器的 SMTC 支持。
@@ -93,6 +93,7 @@ node tests/lyrics-live.mjs        # AMLL 实际 API 查询
 node tests/providers-live.mjs     # 跨曲风的网易云 / 酷狗查询与同步歌词下载
 node tests/annotations-live.mjs   # more than words 完整翻译 / 音译保留验证
 node tests/annotations-desktop.mjs # 桌面渲染和翻译 / 音译覆盖率（先构建桌面）
+node tests/display-desktop.mjs     # 显示开关独立性、持久化及精简界面（先构建桌面）
 cargo test --release --locked --manifest-path native/unilyric-bridge/Cargo.toml -p lyrics_helper_lite --lib # 网易云解析回归
 node tests/providers-desktop.mjs  # 新来源在桌面中渲染；先完成桌面构建
 node tests/fallback-live.mjs      # LRCLIB 请求通道回归；先完成桌面构建

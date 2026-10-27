@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>AMLL Companion</AssemblyName>
-    <Version>0.5.4</Version>
+    <Version>0.5.5</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <DefaultItemExcludes>$(DefaultItemExcludes);SmtcFixture/**;unilyric-bridge/**</DefaultItemExcludes>
