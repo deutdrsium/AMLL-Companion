@@ -5,6 +5,18 @@ body,
   height: 100%;
   overflow: hidden;
 }
+.resize-handle { position: fixed; z-index: 1000; touch-action: none; }
+.resize-n, .resize-s { left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+.resize-n { top: 0; } .resize-s { bottom: 0; }
+.resize-w, .resize-e { top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+.resize-w { left: 0; } .resize-e { right: 0; }
+.resize-nw, .resize-ne, .resize-sw, .resize-se { width: 10px; height: 10px; }
+.resize-nw, .resize-se { cursor: nwse-resize; }
+.resize-ne, .resize-sw { cursor: nesw-resize; }
+.resize-nw { left: 0; top: 0; } .resize-ne { right: 0; top: 0; }
+.resize-sw { left: 0; bottom: 0; } .resize-se { right: 0; bottom: 0; }
+.app[data-window-mode="fullscreen"] .resize-handle,
+.app[data-window-maximized="true"] .resize-handle { display: none; }
 .app {
   min-height: 0;
 }
@@ -245,13 +257,14 @@ dialog {
   main,
   .focus main {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 165px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 165px;
     height: calc(100% - 40px);
     padding: 0 24px 12px;
     gap: 12px;
   }
   .player-panel,
   .focus .player-panel {
+    grid-row: 2;
     display: grid;
     grid-template-columns: 150px minmax(0, 1fr);
     grid-template-rows: 63px 35px 55px;
@@ -302,6 +315,7 @@ dialog {
     display: none;
   }
   .lyrics-panel {
+    grid-row: 1;
     margin: 0;
   }
   .lyrics-heading {

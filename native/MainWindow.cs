@@ -34,12 +34,20 @@ internal sealed class MainWindow : Window
         Icon = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize; Background = new SolidColorBrush(Color.FromRgb(25, 23, 27));
-        WindowChrome.SetWindowChrome(this, new WindowChrome { CaptionHeight = 0, ResizeBorderThickness = new Thickness(5), CornerRadius = new CornerRadius(0), GlassFrameThickness = new Thickness(0) });
-        web.Margin = new Thickness(5); Content = web;
+        WindowChrome.SetWindowChrome(this, new WindowChrome { CaptionHeight = 0, ResizeBorderThickness = new Thickness(5), CornerRadius = new CornerRadius(OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) ? 0 : 12), GlassFrameThickness = new Thickness(0) });
+        web.Margin = new Thickness(0); Content = web;
+        SourceInitialized += (_, _) => {
+            var handle = new WindowInteropHelper(this).Handle;
+            var corners = 2; // DWMWCP_ROUND; DWM keeps maximized/fullscreen edges square.
+            DwmSetWindowAttribute(handle, 33, ref corners, sizeof(int));
+            var border = unchecked((int)0xfffffffe); // DWMWA_COLOR_NONE, no system outline.
+            DwmSetWindowAttribute(handle, 34, ref border, sizeof(int));
+        };
         smtc = new SmtcService(Dispatcher);
         smtc.Changed += state => { if (ready) Post(new { type = "player:state", value = state }); };
         alignment.Progress += value => { if (ready && !closed) Post(new { type = "alignment:progress", value }); };
         Loaded += async (_, _) => await InitializeAsync();
+        StateChanged += (_, _) => { if (ready) Post(new {type="window:state", value=WindowSnapshot()}); };
         Closed += (_, _) => { closed = true; alignment.Dispose(); lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
     }
 
@@ -104,11 +112,15 @@ internal sealed class MainWindow : Window
         catch (Exception ex) { Post(new { type = "reply", id, error = ex.Message }); }
     }
 
-    private object WindowSnapshot() => new { mode = fullscreen ? "fullscreen" : floating ? "floating" : "normal", topmost = Topmost };
+    private object WindowSnapshot() => new { mode = fullscreen ? "fullscreen" : floating ? "floating" : "normal", topmost = Topmost, maximized = WindowState == WindowState.Maximized };
     private void WindowAction(string action)
     {
         switch (action)
         {
+            case var resize when resize.StartsWith("resize-"):
+                if (fullscreen || WindowState != WindowState.Normal) return;
+                var hit = resize[7..] switch { "w"=>10, "e"=>11, "n"=>12, "nw"=>13, "ne"=>14, "s"=>15, "sw"=>16, "se"=>17, _=>throw new ArgumentException("未知缩放方向") };
+                ReleaseCapture(); SendMessage(new WindowInteropHelper(this).Handle, 0x0112, new IntPtr(0xf000 + hit - 9), IntPtr.Zero); break;
             case "minimize": WindowState = WindowState.Minimized; break;
             case "maximize": if (floating) ToggleFloating(); WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized; break;
             case "close": Close(); return;
@@ -169,6 +181,7 @@ internal sealed class MainWindow : Window
         if (web.CoreWebView2 is not null) web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(value, JsonOptions));
     }
 
+    [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);

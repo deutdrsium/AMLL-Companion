@@ -18,11 +18,12 @@ try {
     Copy-Item -LiteralPath (Join-Path $taskRoot 'licenses') -Destination $taskOutput -Recurse -Force
     $taskAlignment = Join-Path $taskOutput 'alignment'
     New-Item -ItemType Directory -Path (Join-Path $taskAlignment 'models') -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/alignment-runtime/python') -Destination $taskAlignment -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/ctc-runtime/python') -Destination $taskAlignment -Recurse -Force
     Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/worker.py') -Destination $taskAlignment -Force
+    Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/ctc.py') -Destination $taskAlignment -Force
     Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/README.md') -Destination $taskAlignment -Force
-    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/alignment-runtime/DEPENDENCIES.json') -Destination $taskAlignment -Force
-    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/alignment-runtime/models/small.pt') -Destination (Join-Path $taskAlignment 'models') -Force
+    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/ctc-runtime/DEPENDENCIES.json') -Destination $taskAlignment -Force
+    Copy-Item -Path (Join-Path $taskRoot '.tools/ctc-runtime/models/*') -Destination (Join-Path $taskAlignment 'models') -Force
     $taskSources = Join-Path $taskAlignment 'sources'
     New-Item -ItemType Directory -Path $taskSources -Force | Out-Null
     Copy-Item -Path (Join-Path $taskRoot '.tools/alignment-sources/*') -Destination $taskSources -Exclude '*.part' -Recurse -Force

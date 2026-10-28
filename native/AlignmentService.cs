@@ -17,17 +17,17 @@ internal sealed class AlignmentService : IDisposable
     {
         var bundled = Path.Combine(AppContext.BaseDirectory, "alignment");
         if (File.Exists(Path.Combine(bundled, "python", "python.exe"))
-            && File.Exists(Path.Combine(bundled, "worker.py")) && File.Exists(Path.Combine(bundled, "models", "small.pt")))
+            && File.Exists(Path.Combine(bundled, "worker.py")) && File.Exists(Path.Combine(bundled, "models", "model_q4.onnx")))
             return (Path.Combine(bundled, "python", "python.exe"), Path.Combine(bundled, "worker.py"), Path.Combine(bundled, "models"));
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory != null; directory = directory.Parent) {
-            var embedded = Path.Combine(directory.FullName, ".tools", "alignment-runtime");
+            var embedded = Path.Combine(directory.FullName, ".tools", "ctc-runtime");
             if (File.Exists(Path.Combine(embedded, "python", "python.exe")) && File.Exists(Path.Combine(embedded, "worker.py"))
-                && File.Exists(Path.Combine(embedded, "models", "small.pt")))
+                && File.Exists(Path.Combine(embedded, "models", "model_q4.onnx")))
                 return (Path.Combine(embedded, "python", "python.exe"), Path.Combine(embedded, "worker.py"), Path.Combine(embedded, "models"));
-            var python = Path.Combine(directory.FullName, ".tools", "alignment-env", "Scripts", "python.exe");
+            var python = Path.Combine(directory.FullName, ".tools", "ctc-env", "Scripts", "python.exe");
             var script = Path.Combine(directory.FullName, "alignment", "worker.py");
-            var models = Path.Combine(directory.FullName, ".tools", "alignment-models");
-            if (File.Exists(python) && File.Exists(script) && File.Exists(Path.Combine(models, "small.pt"))) return (python, script, models);
+            var models = Path.Combine(directory.FullName, ".tools", "ctc-model");
+            if (File.Exists(python) && File.Exists(script) && File.Exists(Path.Combine(models, "model_q4.onnx"))) return (python, script, models);
         }
         return null;
     }
@@ -58,7 +58,7 @@ internal sealed class AlignmentService : IDisposable
         var duration = input.GetProperty("duration").GetDouble();
         if (lines.ValueKind != JsonValueKind.Array || lines.GetArrayLength() is < 1 or > 1000 || duration is < 1000 or > 1200000)
             throw new ArgumentException("对齐需要有效的逐行歌词和完整歌曲时长");
-        var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("whisper-small-v3" + input.GetProperty("musicKey").GetString() + lines.GetRawText())));
+        var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("mms-ctc-q4-v1" + input.GetProperty("musicKey").GetString() + lines.GetRawText())));
         Directory.CreateDirectory(root);
         var cache = Path.Combine(root, key + ".json");
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(12));
@@ -143,7 +143,8 @@ internal sealed class AlignmentService : IDisposable
                 while (await process.StandardError.ReadLineAsync(token) is { } line) {
                     if (!line.StartsWith('{')) continue;
                     try { using var message = JsonDocument.Parse(line); var p = message.RootElement;
-                        if (p.TryGetProperty("line", out var n)) Report(id, $"正在本地对齐：{n.GetInt32()} / {p.GetProperty("total").GetInt32()} 行");
+                        if (p.TryGetProperty("percent", out var percent)) Report(id, $"正在分析音频：{percent.GetInt32()}%");
+                        else if (p.TryGetProperty("line", out var n)) Report(id, $"正在本地对齐：{n.GetInt32()} / {p.GetProperty("total").GetInt32()} 行");
                     } catch (JsonException) { }
                 }
             }, token);

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-$runtimeRoot = Join-Path $taskRoot '.tools/alignment-runtime'
+$runtimeRoot = Join-Path $taskRoot '.tools/ctc-runtime'
 $pythonRoot = Join-Path $runtimeRoot 'python'
 $requirements = Join-Path $taskRoot 'alignment/requirements.txt'
 New-Item -ItemType Directory -Path $pythonRoot -Force | Out-Null
@@ -20,22 +20,24 @@ if (-not (Test-Path -LiteralPath $stamp) -or (Get-Content -LiteralPath $stamp -R
     if ($LASTEXITCODE -ne 0) { throw 'Alignment dependencies failed' }
     [System.IO.File]::WriteAllText($stamp, $hash)
 }
+python (Join-Path $PSScriptRoot 'download-alignment-model.py')
+if ($LASTEXITCODE -ne 0) { throw 'CTC model preparation failed' }
 $models = Join-Path $runtimeRoot 'models'
-New-Item -ItemType Directory -Path $models -Force | Out-Null
-$existing = Join-Path $taskRoot '.tools/alignment-models/small.pt'
-if ((Test-Path -LiteralPath $existing) -and -not (Test-Path -LiteralPath (Join-Path $models 'small.pt'))) {
-    Copy-Item -LiteralPath $existing -Destination $models
-}
+Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/worker.py') -Destination (Join-Path $runtimeRoot 'worker.py') -Force
+Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/ctc.py') -Destination (Join-Path $runtimeRoot 'ctc.py') -Force
 $verify = Join-Path $runtimeRoot 'verify.py'
 [System.IO.File]::WriteAllText($verify, @'
 import sys
-import stable_whisper
-model = stable_whisper.load_model('small', device='cpu', download_root=sys.argv[1])
-assert hasattr(model, 'align_words')
-print('Portable alignment runtime ready')
+from pathlib import Path
+import onnxruntime as ort
+import uroman
+sys.path.insert(0, str(Path(sys.argv[1]).parent))
+from ctc import forced_align
+model = ort.InferenceSession(str(Path(sys.argv[1])/'model_q4.onnx'), providers=['CPUExecutionProvider'])
+assert model.get_inputs()[0].name == 'input_values'
+print('Portable CTC runtime ready (no torch/Whisper)')
 '@, [System.Text.UTF8Encoding]::new($false))
 & $pythonExe $verify $models
 if ($LASTEXITCODE -ne 0) { throw 'Portable alignment model failed to load' }
-Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/worker.py') -Destination (Join-Path $runtimeRoot 'worker.py') -Force
 & $pythonExe (Join-Path $PSScriptRoot 'alignment-inventory.py')
 if ($LASTEXITCODE -ne 0) { throw 'Alignment dependency inventory failed' }

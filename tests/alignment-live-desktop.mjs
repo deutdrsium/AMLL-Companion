@@ -39,12 +39,12 @@ try {
  assert.equal(await page.evaluate(()=>window.liveAlignmentError),undefined);
  const result=await page.evaluate(()=>window.liveAlignmentResult);
  assert.ok(result.alignedLines>0);
- assert.equal(result.engine,'stable-ts/whisper-small');
+ assert.equal(result.engine,'mms-ctc-q4');
  for(let i=0;i<sample.lyric.lines.length;i++)assert.equal(result.lines[i].words.map(w=>w.word).join(''),sample.lyric.lines[i].words.map(w=>w.word).join(''));
  await page.waitForFunction(()=>document.querySelector('.lyrics-panel')?.getAttribute('data-source')?.includes('本地自动对齐'));
  await page.getByRole('button',{name:'设置',exact:true}).click();
  assert.match(await page.locator('[role=status]').innerText(),new RegExp(`已对齐 ${result.alignedLines} 行`));
  await page.screenshot({path:'test-results/native/alignment-live-packaged.png'});
- console.log(`PASS: packaged app, real audio download, local Whisper small, ${result.alignedLines} aligned lines, UI upgraded`);
+ console.log(`PASS: packaged app, real audio download, local MMS CTC Q4, ${result.alignedLines} aligned lines, UI upgraded`);
 }catch(e){if(page)console.log(await page.locator('body').innerText());throw e;}
 finally{fixture?.stdin.end();if(page)await page.evaluate(()=>window.companion.window('close')).catch(()=>{});await browser?.close();host.kill();fixture?.kill();}

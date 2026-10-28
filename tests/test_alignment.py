@@ -1,6 +1,10 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import sys
+import numpy as np
+sys.path.insert(0, str(Path(__file__).parents[1] / 'alignment'))
+from ctc import forced_align, text_units, emissions, align_line
 
 spec = importlib.util.spec_from_file_location('alignment_worker', Path(__file__).parents[1] / 'alignment/worker.py')
 worker = importlib.util.module_from_spec(spec)
@@ -21,7 +25,7 @@ class AlignmentTests(unittest.TestCase):
         self.assertEqual(len(self.lines[0]['words']), 1)
 
     def test_uncertain_or_mismatched_results_remain_line_timed(self):
-        for key, value in [('word', 'wrong'), ('probability', .1), ('end', .2), ('start', float('nan'))]:
+        for key, value in [('word', 'wrong'), ('probability', .01), ('end', .2), ('start', float('nan'))]:
             import copy
             segment = copy.deepcopy(self.segment)
             segment['words'][0][key] = value
@@ -35,31 +39,35 @@ class AlignmentTests(unittest.TestCase):
         self.assertEqual(result['alignedLines'], 0)
         self.assertEqual(result['lines'], self.lines)
 
-    def test_language_detection_skips_instrumental_intro(self):
-        audio = range(90 * 16000)
-        lines = [{'startTime': 0, 'isBG': True, 'words': [{'word': 'intro'}]},
-                 {'startTime': 45000, 'words': [{'word': 'First verse'}]}]
-        excerpt = worker.language_excerpt(audio, lines)
-        self.assertEqual(excerpt.start, 45 * 16000)
-        self.assertEqual(len(excerpt), 30 * 16000)
-        self.assertEqual(worker.language_excerpt(audio, []).start, 0)
+    def test_ctc_repeated_characters_require_a_blank_and_distinct_spans(self):
+        log_probs = np.log(np.array([[.9,.1], [.1,.9], [.9,.1], [.1,.9], [.9,.1]]))
+        result = forced_align(log_probs, [1,1])
+        self.assertEqual([(s[0],s[1]) for s in result], [(1,2),(3,4)])
+        self.assertIsNone(forced_align(log_probs[:2], [1,1]))
 
-    def test_groups_keep_context_but_stop_at_instrumental_gaps(self):
-        import copy
-        lines = []
-        for start in [0, 5000, 10000, 20000]:
-            line = copy.deepcopy(self.lines[0])
-            line.update(startTime=start, endTime=start + 5000)
-            lines.append(line)
-        groups = list(worker.alignment_groups(lines, 25000))
-        self.assertEqual([[entry[0] for entry in group] for group in groups], [[0, 1, 2], [3]])
+    def test_units_preserve_original_punctuation_spaces_and_scripts(self):
+        text = "「你好， 世界！」 Hello, don't stop."
+        units = text_units(text)
+        self.assertEqual(''.join(units), text)
+        self.assertEqual(len(units), 7)
+        self.assertEqual(text_units('e\u0301lan vital'), ['e\u0301lan ', 'vital'])
 
-    def test_split_preserves_real_word_times_and_rejects_cross_line_tokens(self):
-        group = [(0, 0, 1000, 'Hello'), (1, 1000, 2000, 'world!')]
-        result = worker.split_group(group, self.segment['words'], 10)
-        self.assertEqual(result[1][1]['words'][0]['start'], 11.2)
-        self.assertEqual(self.segment['words'][0]['start'], .2)
-        self.assertEqual(worker.split_group(group, [{'word': 'Hello world!', 'start': 0, 'end': 2}], 0), [])
+    def test_one_acoustic_pass_is_reused_for_many_lines(self):
+        class Session:
+            calls = 0
+            def run(self, _, payload):
+                self.calls += 1
+                frames=(payload['input_values'].shape[1]-400)//320+1
+                return [np.zeros((1,frames,31),dtype=np.float32)]
+        class Romanizer:
+            def romanize_string(self,text,**kwargs): return text
+        session=Session()
+        result=emissions(np.ones(40*16000,dtype=np.float32),session,lambda *_:None)
+        self.assertEqual(result.shape,(1999,31))
+        for _ in range(10):
+            segment=align_line(result,'ab cd',Romanizer(),{'a':4,'b':5,'c':6,'d':7},None,0,30)
+            self.assertEqual(''.join(w['word'] for w in segment['words']),'ab cd')
+        self.assertEqual(session.calls,3)
 
     def test_group_cannot_move_a_line_to_another_verse(self):
         for word in self.segment['words']:

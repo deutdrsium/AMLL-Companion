@@ -1,0 +1,9 @@
+{
+  "repository": "onnx-community/mms-300m-1130-forced-aligner-ONNX",
+  "revision": "2100fb247d8e43962eef24491597fbeb8b469531",
+  "license": "CC-BY-NC-4.0",
+  "files": {
+    "onnx/model_q4.onnx": "b6ebc85a3c80059474f14747b8e72f944b49238d32a1c413b9b958e618e204b2",
+    "vocab.json": "0ff83fc9d044537f7c72d92db15b04917f1e50cada799957963bca61e4305971"
+  }
+}

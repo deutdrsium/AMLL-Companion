@@ -55,6 +55,7 @@ export interface Command {
   enabled?: boolean;
 }
 export interface WindowState {
+  maximized?: boolean;
   mode: "normal" | "floating" | "fullscreen";
   topmost: boolean;
 }

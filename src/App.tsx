@@ -37,6 +37,7 @@ import {
   songOffsetKey,
 } from "../shared/clock.mjs";
 import { LiveLyrics, Timeline } from "./Playback";
+import { useLayoutMotion } from './useLayoutMotion';
 import type { PlayerState, Song, Command, WindowState } from "./types";
 
 const initial: PlayerState = {
@@ -174,6 +175,7 @@ export default function App() {
     viewport.width <= 520 ||
     viewport.height <= 360;
   const ready = !!state.music?.musicName && state.connected;
+  useLayoutMotion(viewport.width, viewport.height, mini, focus, reduceMotion);
 
   useEffect(() => {
     const onResize = () =>
@@ -404,7 +406,11 @@ export default function App() {
     <div
       className={`app ${focus ? "focus" : ""} ${mini ? "mini" : ""} ${reduceMotion ? "reduced-motion" : ""}`}
       data-window-mode={windowState.mode}
+      data-window-maximized={!!windowState.maximized}
     >
+      {['n','s','w','e','nw','ne','sw','se'].map(edge => <div key={edge} className={`resize-handle resize-${edge}`} onPointerDown={e => {
+        if (e.button === 0) { e.preventDefault(); void windowAction(`resize-${edge}`); }
+      }}/>)}
       <div className="ambient" />
       {state.cover && (
         <BackgroundRender
@@ -432,7 +438,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.0</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.1</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
