@@ -29,7 +29,6 @@ import {
 import { getLyrics, searchLyrics } from "./lyrics";
 import { lyricDetails,compareLyrics } from '../shared/lyrics-quality.mjs';
 import { providerNames } from '../shared/provider-lyrics.mjs';
-import { alignInBackground } from '../shared/alignment.mjs';
 import {
   PlaybackClock,
   readOffsets,
@@ -155,9 +154,6 @@ export default function App() {
   );
   const [showTranslation, setShowTranslation] = useState(() => localStorage.getItem('show-translation') !== 'false');
   const [showRomanization, setShowRomanization] = useState(() => localStorage.getItem('show-romanization') !== 'false');
-  const [alignmentEnabled, setAlignmentEnabled] = useState(() => localStorage.getItem('automatic-alignment') !== 'false');
-  const [alignmentStatus, setAlignmentStatus] = useState('');
-  const [searchPending,setSearchPending]=useState(false);
   const [corrections,setCorrections]=useState(()=>readCorrections());
   const [metadata,setMetadata]=useState<{key:string;music:Music;message:string}|null>(null);
   const clock = useRef(new PlaybackClock()).current;
@@ -230,21 +226,6 @@ export default function App() {
   }, [reduceMotion]);
   useEffect(() => { localStorage.setItem('show-translation', String(showTranslation)); }, [showTranslation]);
   useEffect(() => { localStorage.setItem('show-romanization', String(showRomanization)); }, [showRomanization]);
-  useEffect(() => { localStorage.setItem('automatic-alignment', String(alignmentEnabled)); }, [alignmentEnabled]);
-  useEffect(() => {
-    setAlignmentStatus('');
-    if (searchPending || !alignmentEnabled || !selectedSongId || !currentMusic || !lines.length) return;
-    const controller = new AbortController();
-    void alignInBackground(currentMusic, lines, candidates, controller.signal, setAlignmentStatus).then(result => {
-      if (!result || controller.signal.aborted) return;
-      const source = `${lyricSource} · 本地自动对齐`;
-      setLines(result.lines); setLyricSource(source);
-      setAlignmentStatus(`已对齐 ${result.alignedLines} 行，其余保留原时间轴`);
-      setCandidates(current => current.map(s => s.id === selectedSongId
-        ? {...s, resolvedLyrics:{lines:result.lines, source, authors}} : s));
-    }).catch(e => { if (!controller.signal.aborted) setAlignmentStatus(e instanceof Error ? e.message : '对齐未完成，保留逐行歌词'); });
-    return () => controller.abort();
-  }, [selectedSongId, key, alignmentEnabled, retry, searchPending]);
   useEffect(() => {
     if (settings || picker) dialog.current?.showModal();
     else dialog.current?.close();
@@ -263,7 +244,6 @@ export default function App() {
     setSelectedSongId(null);
     setAuthors("");
     setLyricSource("");
-    setSearchPending(!!state.music?.musicName);
     setPicker(false);
     if (!state.music?.musicName) {
       setLyricStatus("等待音乐响起");
@@ -310,7 +290,7 @@ export default function App() {
       } catch (e) {
         if (!controller.signal.aborted)
           setLyricStatus(e instanceof Error ? e.message : "歌词加载失败");
-      }finally{if(!controller.signal.aborted)setSearchPending(false);}
+      }
     }, 400);
     return () => {
       clearTimeout(timer);
@@ -345,7 +325,6 @@ export default function App() {
     activeRequest.current?.abort();
     const controller = new AbortController();
     activeRequest.current = controller;
-    setSearchPending(false);
     setPicker(false);
     setLines([]);
     setSelectedSongId(null);
@@ -464,7 +443,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.6</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.7</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
@@ -747,11 +726,6 @@ export default function App() {
                 <div><strong>显示音译</strong><p>显示歌词提供的罗马音等音译。</p></div>
                 <input type="checkbox" aria-label="显示音译" checked={showRomanization} onChange={e => setShowRomanization(e.target.checked)} />
               </label>
-              <label className="setting">
-                <div><strong>自动生成逐字时间轴</strong><p>没有逐字歌词时获取匹配音频，在本机后台对齐。处理期间仍显示逐行歌词。</p></div>
-                <input type="checkbox" aria-label="自动生成逐字时间轴" checked={alignmentEnabled} onChange={e => setAlignmentEnabled(e.target.checked)} />
-              </label>
-              {alignmentStatus && <p className="hint" role="status">{alignmentStatus}</p>}
               {state.music&&currentMusic&&<MetadataEditor key={correctionKey(state.music)} raw={state.music} music={currentMusic}
                 message={metadata?.key===key?metadata.message:''} saved={!!manualRule}
                 onSave={value=>{setMetadata(null);setCorrections(saveCorrection(state.music!,value));}}

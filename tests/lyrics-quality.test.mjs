@@ -10,12 +10,14 @@ test('real word times beat line timing regardless of source or line count',()=>{
  const fake=line(true);fake.words[1].startTime=1000;
  assert.equal(lyricQuality([fake])[0],0);
 });
-test('word coverage, translations, then romanization rank complete alternatives',()=>{
+test('word line count, coverage, translations, then romanization rank alternatives',()=>{
  const sparse=song('sparse',[line(true),line(false)]);
  const full=song('full',[line(true),line(true)]);
  const translated=song('translated',[line(true,'translation')]);
  const roman=song('roman',[line(true,'translation','roman')]);
- assert.deepEqual([sparse,full,translated,roman].sort(compareLyrics).map(s=>s.id),['roman','translated','full','sparse']);
+ assert.deepEqual([sparse,full,translated,roman].sort(compareLyrics).map(s=>s.id),['full','roman','translated','sparse']);
+ const more=song('more',[line(true),line(true),line(false),line(false)]);
+ assert.ok(compareLyrics(more,roman)<0,'Two word-timed lines beat one fully translated word line');
 });
 test('later better candidate wins; failed downloads do not block selection',async()=>{
  const c=new AbortController();
@@ -55,3 +57,17 @@ test('candidate details explicitly report present and absent lyric features',()=
  const wrong=song('wrong',[line(false,'x'),{...line(false,'y'),words:[{word:'different'}]}]);
  assert.equal(supplementTranslations(base,[wrong]),base);
  });
+
+test('partial translations match by text across credits, extra lines and repeated choruses',async()=>{
+ const {supplementTranslations}=await import('../shared/lyrics-quality.mjs');
+ const make=(text,time,translation='',word=false)=>({...line(word,translation),startTime:time,
+  words:word?[{word:text.slice(0,1),startTime:time,endTime:time+100},{word:text.slice(1),startTime:time+100,endTime:time+200}]:[{word:text,startTime:time,endTime:time+200}]});
+ const base=song('word',[make('第一句',1000,'',true),make('副歌',5000,'已有',true),make('副歌',15000,'',true),make('没有匹配',20000,'',true)]);
+ const donor=song('donor',[make('词：某某 曲：某某',0,'署名'),make('额外一句',500),make('第一句！',1100,'first'),make('副歌',5100,'early'),make('副歌',15100,'late')]);
+ const result=supplementTranslations(base,[donor]);
+ assert.deepEqual(result.resolvedLyrics.lines.map(l=>l.translatedLyric),['first','已有','late','']);
+ assert.deepEqual(result.resolvedLyrics.lines.map(l=>l.words),base.resolvedLyrics.lines.map(l=>l.words));
+ assert.equal(base.resolvedLyrics.lines[0].translatedLyric,'');
+ const credit=make('作词：署名',0,'',true);
+ assert.equal(lyricQuality([credit,make('正文',1000,'',true)])[0],1,'Credits cannot inflate word line count');
+});

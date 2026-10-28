@@ -1,6 +1,10 @@
 // Compare parsed timing, not format names: TTML can contain only line timing.
 import { bestMatch, normalize } from './matching.mjs';
 
+const credit=/^\s*(?:作词|作曲|作詞|作編曲|编曲|編曲|词曲|詞曲|词|詞|曲|制作人|製作人|演唱|歌手|专辑|專輯|lyrics\s*(?:by)?|music\s*(?:by)?|written\s*by|composed\s*(?:by)?|produced\s*(?:by)?|arranged\s*(?:by)?)\s*[:：]/i;
+const lineText=line=>line.words.map(w=>w.word).join('');
+const mainLines=lines=>lines.filter(line=>!line.isBG&&line.words?.some(w=>w.word?.trim())&&!credit.test(lineText(line)));
+
 export function amllCandidates(result, music) {
   if (!result.match) return [];
   const fields = ['appleMusicIds', 'isrcs', 'spotifyIds', 'ncmMusicIds', 'qqMusicIds'];
@@ -18,7 +22,7 @@ export function lyricDetails(lines) {
     `${lines.filter(l => !l.isBG && l.words?.some(w => w.word?.trim())).length} 行`].join(' · ');
 }
 export function lyricQuality(lines) {
-  const main = lines.filter(l => !l.isBG && l.words?.some(w => w.word?.trim()));
+  const main = mainLines(lines);
   if (!main.length) return [0, 0, 0, 0, 0];
   const timed = main.filter(l => {
     const words = l.words.filter(w => w.word?.trim());
@@ -26,7 +30,7 @@ export function lyricQuality(lines) {
       && Number.isFinite(w.endTime) && w.endTime > w.startTime)
       && new Set(words.map(w => w.startTime)).size > 1;
   }).length;
-  return [Number(timed > 0), timed / main.length,
+  return [timed, timed / main.length,
     main.filter(l => l.translatedLyric?.trim()).length / main.length,
     main.filter(l => l.romanLyric?.trim()).length / main.length,
     Number(lines.some(l => l.isBG)) + Number(lines.some(l => l.isDuet))];
@@ -52,21 +56,26 @@ export async function resolveBest(candidates, resolve, signal, onResolved) {
   return results.filter(Boolean).sort(compareLyrics)[0] || null;
 }
 
-// Donors must already pass recording matching. Equal counts alone cannot prove line correspondence.
+// Donors already passed recording matching; repeated lines use the closest unused occurrence.
 export function supplementTranslations(song, donors) {
   const base=song.resolvedLyrics;
   if(!base||!lyricQuality(base.lines)[0])return song;
-  const main=lines=>lines.filter(l=>!l.isBG&&l.words?.some(w=>w.word?.trim()));
-  const target=main(base.lines), text=line=>normalize(line.words.map(w=>w.word).join(''));
-  const lines=base.lines.map(line=>({...line})), output=main(lines),sources=new Set(),authors=new Set();
+  const lines=base.lines.map(line=>({...line})), output=mainLines(lines),sources=new Set(),authors=new Set();
   for(const donor of [...donors].sort(compareLyrics)){
     if(donor.id===song.id||!donor.resolvedLyrics)continue;
-    const from=main(donor.resolvedLyrics.lines);
-    if(from.length!==target.length||from.some((line,i)=>text(line)!==text(target[i])))continue;
+    const byText=new Map();
+    for(const line of mainLines(donor.resolvedLyrics.lines)){
+      const key=normalize(lineText(line));if(!key)continue;
+      if(!byText.has(key))byText.set(key,[]);byText.get(key).push(line);
+    }
     let used=false;
-    from.forEach((line,i)=>{if(!output[i].translatedLyric?.trim()&&line.translatedLyric?.trim()){
-      output[i].translatedLyric=line.translatedLyric;used=true;
-    }});
+    for(const line of output){
+      const matches=byText.get(normalize(lineText(line)));if(!matches?.length)continue;
+      let index=0;
+      for(let i=1;i<matches.length;i++)if(Math.abs(matches[i].startTime-line.startTime)<Math.abs(matches[index].startTime-line.startTime))index=i;
+      const [from]=matches.splice(index,1);
+      if(!line.translatedLyric?.trim()&&from.translatedLyric?.trim()){line.translatedLyric=from.translatedLyric;used=true;}
+    }
     if(used){sources.add(donor.resolvedLyrics.source||String(donor.id));authors.add(donor.resolvedLyrics.authors||donor.resolvedLyrics.source||String(donor.id));}
   }
   if(!sources.size)return song;

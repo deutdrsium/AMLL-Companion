@@ -9,13 +9,13 @@ try{
  await page.route('https://api.amll.dev/**',r=>r.fulfill({json:{status:200,data:{items:[]}}}));
  await page.route('https://lrclib.net/**',r=>r.fulfill({json:[]}));
  await page.addInitScript(()=>{
-  localStorage.clear();localStorage.setItem('automatic-alignment','false');
+  localStorage.clear();localStorage.setItem('automatic-alignment','true');window.alignmentCalls=0;
   const delay=ms=>new Promise(r=>setTimeout(r,ms));window.searchCalls=[];window.cancelCalls=0;
   const music={musicId:'latency',musicName:'Test Song',artists:['Artist'],albumName:'Album',duration:100000};
   const record={id:'11111111-1111-4111-8111-111111111111',title:music.musicName,length:100000,aliases:[],releases:[{title:'Album'}],
    'artist-credit':[{name:'Artist',artist:{id:'22222222-2222-4222-8222-222222222222',name:'Artist',aliases:[]}}]};
   window.companion={native:true,snapshot:async()=>({connected:true,error:'',music,cover:'',position:1000,clockAtSend:performance.now(),monotonicAt:1000,playing:false,rate:1,timelineRevision:1,repeat:'off',shuffle:false,controls:{},sessions:[]}),
-   subscribe:()=>()=>{},windowState:async()=>({mode:'normal',topmost:false}),subscribeWindow:()=>()=>{},cancelProvider:async()=>{window.cancelCalls++;},alignmentStatus:async()=>({available:false}),
+   subscribe:()=>()=>{},windowState:async()=>({mode:'normal',topmost:false}),subscribeWindow:()=>()=>{},cancelProvider:async()=>{window.cancelCalls++;},alignmentStatus:async()=>{window.alignmentCalls++;return {available:true};},alignLyrics:async()=>{window.alignmentCalls++;throw Error('Disabled alignment must not execute');},
    providerQuery:async request=>{
     window.searchCalls.push({provider:request.provider,operation:request.operation,at:performance.now()});
     if(request.provider==='web'){
@@ -51,5 +51,9 @@ try{
   assert.ok((await page.locator('.lyric-player').innerText()).includes('Fast line'),'Background word lyrics must not replace a manual selection');
   assert.ok(await page.evaluate(before=>window.cancelCalls>before,canceled));
   console.log('PASS manual selection cancels background search and survives late better lyrics');
+  assert.equal(await page.evaluate(()=>window.alignmentCalls),0,'An old enabled preference must not invoke alignment');
+  await page.getByRole('button',{name:'设置',exact:true}).click();
+  assert.equal(await page.getByRole('checkbox',{name:'自动生成逐字时间轴'}).count(),0);
+  console.log('PASS experimental alignment is hidden and old enabled preference cannot start it');
  }
 }finally{await browser?.close();await new Promise(resolve=>server.httpServer.close(resolve));}

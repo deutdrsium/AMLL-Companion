@@ -3,9 +3,6 @@ $taskRoot = Split-Path -Parent $PSScriptRoot
 Push-Location -LiteralPath $taskRoot
 try {
     & "$PSScriptRoot/build-bridge.ps1"
-    & "$PSScriptRoot/build-alignment.ps1"
-    python "$PSScriptRoot/prepare-alignment-sources.py"
-    if ($LASTEXITCODE -ne 0) { throw 'Alignment source preparation failed' }
     npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed' }
     $taskVersion = (Get-Content -LiteralPath (Join-Path $taskRoot 'package.json') -Raw | ConvertFrom-Json).version
@@ -16,17 +13,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $taskRoot 'README.md') -Destination $taskOutput
     Copy-Item -LiteralPath (Join-Path $taskRoot 'THIRD-PARTY-NOTICES.md') -Destination $taskOutput
     Copy-Item -LiteralPath (Join-Path $taskRoot 'licenses') -Destination $taskOutput -Recurse -Force
-    $taskAlignment = Join-Path $taskOutput 'alignment'
-    New-Item -ItemType Directory -Path (Join-Path $taskAlignment 'models') -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/ctc-runtime/python') -Destination $taskAlignment -Recurse -Force
-    Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/worker.py') -Destination $taskAlignment -Force
-    Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/ctc.py') -Destination $taskAlignment -Force
-    Copy-Item -LiteralPath (Join-Path $taskRoot 'alignment/README.md') -Destination $taskAlignment -Force
-    Copy-Item -LiteralPath (Join-Path $taskRoot '.tools/ctc-runtime/DEPENDENCIES.json') -Destination $taskAlignment -Force
-    Copy-Item -Path (Join-Path $taskRoot '.tools/ctc-runtime/models/*') -Destination (Join-Path $taskAlignment 'models') -Force
-    $taskSources = Join-Path $taskAlignment 'sources'
-    New-Item -ItemType Directory -Path $taskSources -Force | Out-Null
-    Copy-Item -Path (Join-Path $taskRoot '.tools/alignment-sources/*') -Destination $taskSources -Exclude '*.part' -Recurse -Force
+    if (Test-Path -LiteralPath (Join-Path $taskOutput 'alignment')) { throw 'Publish directory contains an old alignment runtime; use a clean output directory' }
     $taskArchive = Join-Path $taskRoot "release\AMLL-Companion-$taskVersion-win-x64.zip"
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     if (Test-Path -LiteralPath $taskArchive) { Remove-Item -LiteralPath $taskArchive }

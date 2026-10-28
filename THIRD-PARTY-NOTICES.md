@@ -11,9 +11,9 @@ The bridge transports upstream SMTC events and commands and runs lyric-provider 
 
 - Lucide / lucide-react: https://github.com/lucide-icons/lucide — ISC (with original Feather MIT attribution). Title-bar Music2 geometry is also used in public/app-icon.svg and native/Assets/app.ico; icon background and rasterization are local adaptations. License: licenses/Lucide-ISC.txt.
 
-## Local alignment runtime (0.6.1)
+## Experimental local alignment sources (not shipped since 0.6.7)
 
-The portable distribution includes an unmodified CPython 3.12.10 embedded runtime (PSF license, `alignment/python/LICENSE.txt`), ONNX Runtime (MIT), NumPy (BSD and bundled notices), uroman (MIT with acknowledgement requirement), and PyAV 19.0.2 (BSD-3-Clause). Exact versions and upstream license-file paths are recorded in `alignment/DEPENDENCIES.json`. Original package license files and notices remain inside `alignment/python/Lib/site-packages`. PyTorch, torchaudio, Whisper and Stable-ts are no longer included.
+Current portable packages omit the alignment model and runtime. The following notices document the retained experimental source and older 0.6.1–0.6.6 packages. Those packages include an unmodified CPython 3.12.10 embedded runtime (PSF license, `alignment/python/LICENSE.txt`), ONNX Runtime (MIT), NumPy (BSD and bundled notices), uroman (MIT with acknowledgement requirement), and PyAV 19.0.2 (BSD-3-Clause). Exact versions and upstream license-file paths are recorded in `alignment/DEPENDENCIES.json`. Original package license files and notices remain inside `alignment/python/Lib/site-packages`. PyTorch, torchaudio, Whisper and Stable-ts are no longer included.
 
 The MMS acoustic weights are **CC-BY-NC-4.0 (non-commercial)**, separately from the application's AGPL code license. Attribution and export/quantization details: `alignment/models/MODEL.md`; pinned revision and hashes: `alignment/models/model.json`; full license: `licenses/MMS-CC-BY-NC-4.0.txt`. Source: https://huggingface.co/onnx-community/mms-300m-1130-forced-aligner-ONNX, based on Mahmoud Ashraf's forced-aligner fine-tune of Meta MMS. The application uses the four-bit ONNX export without additional weight changes.
 

@@ -17,7 +17,6 @@ internal sealed class MainWindow : Window
     private readonly WebView2 web = new();
     private readonly SmtcService smtc;
     private readonly LyricsProviders lyrics = new();
-    private readonly AlignmentService alignment = new();
     private readonly string[] args;
     private bool ready, floating, fullscreen, closed;
     private Rect normalBounds = new(100, 100, 1280, 820);
@@ -45,10 +44,9 @@ internal sealed class MainWindow : Window
         };
         smtc = new SmtcService(Dispatcher);
         smtc.Changed += state => { if (ready) Post(new { type = "player:state", value = state }); };
-        alignment.Progress += value => { if (ready && !closed) Post(new { type = "alignment:progress", value }); };
         Loaded += async (_, _) => await InitializeAsync();
         StateChanged += (_, _) => { if (ready) Post(new {type="window:state", value=WindowSnapshot()}); };
-        Closed += (_, _) => { closed = true; alignment.Dispose(); lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
+        Closed += (_, _) => { closed = true; lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
     }
 
     private async Task InitializeAsync()
@@ -94,9 +92,9 @@ internal sealed class MainWindow : Window
                 case "lyricsSearch": result = await LyricsHttp.SearchAsync(value.GetString() ?? ""); break;
                 case "providerQuery": result = await lyrics.QueryAsync(value); break;
                 case "providerCancel": lyrics.Cancel(value.GetString() ?? ""); break;
-                case "alignmentStatus": result = alignment.Status(); break;
-                case "alignLyrics": result = await alignment.AlignAsync(value); break;
-                case "alignmentCancel": alignment.Cancel(value.GetString() ?? ""); break;
+                case "alignmentStatus": result = new { available = false }; break;
+                case "alignLyrics": throw new InvalidOperationException("逐字识别功能暂时停用");
+                case "alignmentCancel": break;
                 case "command": await smtc.CommandAsync(value.GetProperty("command").GetString() ?? "", value); break;
                 case "sessions": await smtc.SelectAsync(value.GetString() ?? "auto"); break;
                 case "window": WindowAction(value.GetString() ?? ""); result = WindowSnapshot(); break;

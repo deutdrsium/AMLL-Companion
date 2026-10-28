@@ -25,7 +25,7 @@ test('web LRC preserves enhanced word timestamps and bounds final line', () => {
   const enhanced = '[ti:Test Song]\n[ar:Test Artist]\n' + [1, 4, 8].map(t => `[00:0${t}.00]<00:0${t}.00>First <00:0${t+1}.00>word<00:0${t+2}.00>`).join('\n');
   const song = webSong(enhanced, '', music, url);
   assert.ok(song);
-  assert.equal(lyricQuality(song.resolvedLyrics.lines)[0], 1);
+  assert.equal(lyricQuality(song.resolvedLyrics.lines)[0], 3);
   assert.equal(webSong(lrc, '', music, url).resolvedLyrics.lines.at(-1).endTime, music.duration);
 });
 test('web links reject active content, credentials, local hosts and nondefault ports', () => {
