@@ -44,7 +44,7 @@ export interface Song {
   sourceUrl?: string;
   providerData?: unknown;
   inspectionError?: string;
-  resolvedLyrics?: { lines: import('@applemusic-like-lyrics/core').LyricLine[]; source: string; authors: string };
+  resolvedLyrics?: { lines: import('@applemusic-like-lyrics/core').LyricLine[]; source: string; authors: string; selectionTiming?: [number,number] };
   duration?: number;
   id: number | string;
   musicNames: string[];

@@ -53,7 +53,7 @@ DuckDuckGo [并不保证支持 `filetype:lrc`](https://duckduckgo.com/duckduckgo
 
 0.6.6 取消只比较前三个歌词版本的限制：每批候选保持三个下载任务并发，逐个补位，比较接口返回的全部匹配版本。已确认的首个结果仍立即显示，后台完成后统一优选，逐词正文行数及其覆盖率始终优先于翻译。接口未返回的版本不在比较范围内。
 
-从 0.6.7 起，逐词版本缺少的翻译按原文逐行补齐，不要求总行数相同或每行都匹配。忽略“词：／曲：／作词：”等署名及和声行；空白、标点和繁简归一化后相同的正文可借用翻译。重复句优先对应时间最近且尚未使用的同一句；不匹配的行继续留空。只填缺失翻译，保留已有翻译、原文和逐词时间轴，来源记录翻译提供方。
+从 0.6.8 起，逐词版本缺少的翻译按连续原文片段对齐，不要求总行数或分句相同。忽略署名和开头带署名的歌名信息；每侧可组合最多三行，允许长句中少量字词差异，并用时间及先后顺序约束重复副歌，避免借用另一段的翻译。优先使用翻译最完整的来源。一句译文覆盖多行逐词原文时，合并对应显示句，完整保留各词起止时间及音译；原始逐词覆盖程度仍用于优选，不因显示句合并而降级。已有翻译保留，不匹配的部分留空，来源记录翻译提供方。正文覆盖率不计算歌名及署名行。
 
 ## 发行地区、原文名称与别名（0.6.4）
 
@@ -137,6 +137,8 @@ node tests/expanded-providers-live.mjs # QQ / 酷我 / 咪咕实际搜索、匹�
 node tests/web-desktop.mjs        # 桌面网页兜底、优选顺序、验证码、切歌取消（先构建桌面）
 dotnet run --project tests/NativeLyricsTests/NativeLyricsTests.csproj -c Release # 网页 URL / IP 边界测试
 node tests/annotations-live.mjs   # more than words 完整翻译 / 音译保留验证
+node tests/translation-live.mjs   # グレゴリオ 实际跨来源分句补全与原逐词时间点保留
+node tests/translation-headless.mjs # 无窗口回放真实歌词，验证自动选用和翻译显示（先运行上一项及 npm run build）
 node tests/annotations-desktop.mjs # 桌面渲染和翻译 / 音译覆盖率（先构建桌面）
 node tests/display-desktop.mjs     # 显示开关独立性、持久化及精简界面（先构建桌面）
 cargo test --release --locked --manifest-path native/unilyric-bridge/Cargo.toml -p lyrics_helper_lite --lib # 网易云解析回归

@@ -443,7 +443,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.7</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.8</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
