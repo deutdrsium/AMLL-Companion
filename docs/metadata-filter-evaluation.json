@@ -1,17 +1,17 @@
 {
-  "method": "Convenience sample; manual raw-line labels plus paired deterministic metadata injection. Not a held-out benchmark.",
+  "method": "Cached convenience sample with manual raw-line labels, paired deterministic metadata injection, and reviewed format/negative examples at three edge placements. Not a held-out benchmark.",
   "attemptedSongs": 12,
   "validVersions": 18,
   "excludedUntimedVersions": 1,
   "songs": 11,
   "natural": {
-    "tp": 22,
+    "tp": 23,
     "fp": 0,
-    "fn": 1,
+    "fn": 0,
     "tn": 817,
     "precision": 1,
-    "recall": 0.9565217391304348,
-    "missRate": 0.043478260869565216,
+    "recall": 1,
+    "missRate": 0,
     "falsePositiveRate": 0
   },
   "clean": {
@@ -25,10 +25,23 @@
     "falsePositiveRate": 0
   },
   "injected": {
-    "tp": 234,
+    "tp": 558,
     "fp": 0,
     "fn": 0,
     "tn": 817,
+    "precision": 1,
+    "recall": 1,
+    "missRate": 0,
+    "falsePositiveRate": 0
+  },
+  "curated": {
+    "metadataExamples": 204,
+    "protectedExamples": 54,
+    "placements": 3,
+    "tp": 612,
+    "fp": 0,
+    "fn": 0,
+    "tn": 936,
     "precision": 1,
     "recall": 1,
     "missRate": 0,
@@ -294,11 +307,10 @@
         1
       ],
       "detected": [
+        0,
         1
       ],
-      "missed": [
-        0
-      ],
+      "missed": [],
       "pairedBodyUnchanged": true,
       "sha256": "e3090fa2e7c6857caadad97bb613e140f03de02b48542b6483f91d86e4ce0cbe"
     }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   LyricPlayer,
   type LyricPlayerRef,
@@ -120,6 +120,31 @@ export function LiveLyrics({
     translatedLyric: showTranslation ? line.translatedLyric : '',
     romanLyric: showRomanization ? line.romanLyric : '',
   })), [lines, showTranslation, showRomanization]);
+  const [visibleLines,setVisibleLines]=useState(displayLines);
+  const shown=useRef(displayLines),fadeOut=useRef<Animation|null>(null);
+  useEffect(()=>{
+    if(shown.current===displayLines)return;
+    const element=player.current?.wrapperEl;
+    if(reduceMotion||!element){setVisibleLines(displayLines);return;}
+    let cancelled=false;
+    const animation=element.animate([{opacity:getComputedStyle(element).opacity},{opacity:0}],{duration:120,easing:'ease-in',fill:'forwards'});
+    fadeOut.current=animation;
+    void animation.finished.then(()=>{if(!cancelled)setVisibleLines(displayLines);},()=>{});
+    return ()=>{cancelled=true;animation.cancel();};
+  },[displayLines,reduceMotion]);
+  useLayoutEffect(()=>{
+    // Rebuild at the live clock position while hidden, before the next paint.
+    const core=player.current?.lyricPlayer;
+    core?.setCurrentTime(Math.round(Math.max(0,clock.at()+offset)),true);
+    core?.update(0);
+    if(shown.current===visibleLines)return;
+    shown.current=visibleLines;
+    fadeOut.current?.cancel();
+    fadeOut.current=null;
+    if(reduceMotion)return;
+    const animation=player.current?.wrapperEl?.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'});
+    return ()=>animation?.cancel();
+  },[visibleLines,clock,offset,reduceMotion]);
   useEffect(() => {
     let frame = 0,
       revision = -1;
@@ -134,12 +159,13 @@ export function LiveLyrics({
     };
     frame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frame);
-  }, [clock, offset, displayLines]);
+  }, [clock, offset]);
   return (
     <LyricPlayer
       ref={player}
       className="lyric-player"
-      lyricLines={displayLines}
+      lyricLines={visibleLines}
+      currentTime={Math.round(Math.max(0,clock.at()+offset))}
       playing={playing}
       enableSpring={!reduceMotion}
       enableBlur={!reduceMotion}

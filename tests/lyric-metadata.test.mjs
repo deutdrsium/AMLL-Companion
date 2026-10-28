@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cleanLyricLines,inspectLyricMetadata} from '../shared/lyric-metadata.mjs';
+import {metadataContext,metadataExamples,protectedExamples} from './fixtures/lyric-metadata.mjs';
 const line=(text,time)=>({startTime:time,endTime:time+500,words:[{word:text,startTime:time,endTime:time+500}],translatedLyric:'',romanLyric:''});
 const context={musicName:'MOON-VINE',artists:['夏背','Orangestar'],duration:180000};
 
@@ -24,4 +25,36 @@ test('localized labels, title aliases and version suffixes are recognized',()=>{
  const song={musicNames:['Moonbath'],titleAliases:['月光浴'],artistNames:['Yorushika'],artistAliases:['ヨルシカ'],duration:200000};
  const lines=[line('月光浴 (Single)--ヨルシカ',0),line('【作詞：n-buna】',100),line('작곡：n-buna',200),line('Lyrics by n-buna',300),line('body',9000)];
  assert.equal(cleanLyricLines(lines,song).length,1);
+});
+
+test('reviewed metadata examples are all recognized and ambiguous text is preserved',()=>{
+ for(const text of metadataExamples){
+  const body=line('The first real lyric',50000);
+  assert.deepEqual(cleanLyricLines([line(text,0),body],metadataContext),[body],text);
+ }
+ for(const text of protectedExamples){
+  const lines=[line(text,0),line('The first real lyric',50000)];
+  assert.equal(cleanLyricLines(lines,metadataContext),lines,text);
+ }
+});
+
+test('long opening credit blocks extend past eight lines and twenty seconds',()=>{
+ const headers=metadataExamples.map((text,i)=>line(text,i*1500));
+ const body={...line('The first real lyric',400000),translatedLyric:'正文译文',romanLyric:'roman'};
+ const lines=[line('',0),...headers.slice(0,12),line('',18000),...headers.slice(12),body];
+ const result=inspectLyricMetadata(lines,{...metadataContext,duration:450000});
+ assert.equal(result.removed.length,headers.length);
+ assert.deepEqual(result.lines,[lines[0],lines[13],body]);
+ assert.equal(result.lines.at(-1),body);
+ assert.equal(cleanLyricLines(result.lines,metadataContext),result.lines);
+});
+
+test('prefix extension stops at body, background and duet lines',()=>{
+ for(const first of [line('Real lyric',25000),{...line('和声：夏背',25000),isBG:true},{...line('演唱：夏背',25000),isDuet:true}]){
+  const lines=[first,line('作词：夏背',30000),line('Final lyric',170000)];
+  assert.equal(cleanLyricLines(lines,metadataContext),lines);
+ }
+ const late=Array.from({length:10},(_,i)=>line('Real lyric',i*3000));
+ late.push(line('作词：夏背',30000),line('Final lyric',170000));
+ assert.equal(cleanLyricLines(late,metadataContext),late);
 });
