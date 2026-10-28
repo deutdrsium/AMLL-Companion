@@ -444,7 +444,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.9</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.10</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
@@ -809,7 +809,7 @@ export default function App() {
                     </span>
                     {s.sourceUrl && <span className="lyric-details" title={s.sourceUrl}>{s.sourceUrl}</span>}
                     <span className="lyric-details">{s.resolvedLyrics ? lyricDetails(s.resolvedLyrics.lines,s)
-                      : s.inspectionError ? `检测失败：${s.inspectionError}（可点击重试）` : '正在检测逐词、翻译、音译、和声及对唱…'}</span>
+                      : s.inspectionError ? `检测失败：${s.inspectionError}（可点击重试）` : '正在检测歌词能力…'}</span>
                   </button>
                 ))}
               </div>

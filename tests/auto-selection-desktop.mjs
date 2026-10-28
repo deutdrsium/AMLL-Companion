@@ -25,7 +25,7 @@ try {
  await page.getByRole('button',{name:'选择歌词版本',exact:true}).click();
  await page.waitForFunction(()=>{const details=[...document.querySelectorAll('.lyric-details')];return details.length>0&&details.every(d=>!d.textContent.includes('正在检测'));},null,{timeout:60000});
  const details=await page.locator('.lyric-details').allTextContents();
- assert.ok(details.some(d=>/逐行|逐词/.test(d)&&/翻译：[有无]/.test(d)&&/音译：[有无]/.test(d)&&/和声：[有无]/.test(d)&&/对唱：[有无]/.test(d)&&/\d+ 行/.test(d)));
+ assert.ok(details.some(d=>/逐行|逐词/.test(d)&&!/：无|：有/.test(d)&&/\d+ 行/.test(d)));
  assert.match(await page.locator('.candidates').innerText(),/当前使用/);
  await page.screenshot({path:'test-results/native/qinghuaci-candidate-details.png'});
  console.log('PASS: 青花瓷 auto-selected with missing duration, rechecked on delayed duration, and candidate capabilities rendered',JSON.stringify(details));

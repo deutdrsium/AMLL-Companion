@@ -16,10 +16,9 @@ export function amllCandidates(result, music) {
 export function lyricDetails(lines,context={}) {
   const quality = lyricQuality(lines,context);
   return [quality[0] ? `逐词（${Math.round(quality[1] * 100)}%）` : '逐行',
-    `翻译：${quality[2] ? `有（${Math.round(quality[2] * 100)}%）` : '无'}`,
-    `音译：${quality[3] ? `有（${Math.round(quality[3] * 100)}%）` : '无'}`,
-    `和声：${lines.some(l => l.isBG) ? '有' : '无'}`, `对唱：${lines.some(l => l.isDuet) ? '有' : '无'}`,
-    `${mainLines(lines,context).length} 行`].join(' · ');
+    quality[2]?'翻译':null,quality[3]?'音译':null,
+    lines.some(l=>l.isBG)?'和声':null,lines.some(l=>l.isDuet&&!l.isBG)?'对唱':null,
+    `${mainLines(lines,context).length} 行`].filter(Boolean).join(' · ');
 }
 export function lyricQuality(lines,context={}) {
   const main = mainLines(lines,context);
@@ -72,10 +71,10 @@ function textDistance(a,b){
   return row[b.length]<=limit?row[b.length]:null;
 }
 
-function translationPairs(target,from){
+function translationPairs(target,from,allowSpeakerChanges=false){
   const groups=lines=>lines.map((_,i)=>Array.from({length:Math.min(3,lines.length-i)},(_,n)=>{
     const rows=lines.slice(i,i+n+1);
-    return rows.every(l=>!!l.isDuet===!!rows[0].isDuet)?normalize(rows.map(lineText).join('')):null;
+    return allowSpeakerChanges||rows.every(l=>!!l.isDuet===!!rows[0].isDuet)?normalize(rows.map(lineText).join('')):null;
   }));
   const a=groups(target),b=groups(from),width=from.length+1;
   const scores=new Float64Array((target.length+1)*width),steps=new Uint8Array(scores.length);
@@ -105,6 +104,57 @@ function translationPairs(target,from){
   }
   return pairs;
 }
+
+function duetParts(target,from){
+  const flags=new Set(from.map(l=>!!l.isDuet));
+  if(flags.size===1)return target.map(line=>({original:line,parts:[from[0].isDuet?{...line,isDuet:true}:line]}));
+  // Different speakers need exact text boundaries; do not invent word times or split translations.
+  if(normalize(target.map(lineText).join(''))!==normalize(from.map(lineText).join('')))return [];
+  let offset=0;const spans=from.map(line=>{const start=offset;offset+=normalize(lineText(line)).length;return {start,end:offset,duet:!!line.isDuet};});
+  offset=0;
+  return target.map(line=>{
+    const groups=[];let safe=true;
+    for(const word of line.words){
+      const length=normalize(word.word).length,start=offset;offset+=length;
+      const overlaps=spans.filter(span=>length?span.start<offset&&span.end>start:span.start<=Math.max(0,start-1)&&span.end>Math.max(0,start-1));
+      if(new Set(overlaps.map(span=>span.duet)).size>1)safe=false;
+      const duet=overlaps[0]?.duet||false;
+      if(groups.at(-1)?.duet===duet)groups.at(-1).words.push(word);else groups.push({duet,words:[word]});
+    }
+    if(!safe||(groups.length>1&&(line.translatedLyric?.trim()||line.romanLyric?.trim())))return {original:line,parts:[line]};
+    return {original:line,parts:groups.map(group=>({...line,isDuet:group.duet,words:group.words,
+      startTime:groups.length===1?line.startTime:group.words[0].startTime,
+      endTime:groups.length===1?line.endTime:group.words.at(-1).endTime}))};
+  });
+}
+
+export function supplementDuet(song,donors){
+  const base=song.resolvedLyrics;if(!base)return song;
+  const target=mainLines(base.lines,song);
+  if(target.some(l=>l.isDuet))return song;
+  let best=null;
+  for(const donor of [...donors].sort(compareLyrics)){
+    if(donor.id===song.id||!donor.resolvedLyrics)continue;
+    const from=mainLines(donor.resolvedLyrics.lines,donor);if(!from.some(l=>l.isDuet))continue;
+    const replacements=new Map();let coverage=0;
+    for(const pair of translationPairs(target,from,true)){
+      for(const {original,parts} of duetParts(pair.target,pair.from)){
+        replacements.set(original,parts);coverage+=normalize(lineText(original)).length;
+      }
+    }
+    const changed=[...replacements.values()].some(parts=>parts.some(l=>l.isDuet));
+    if(changed&&(!best||coverage>best.coverage))best={donor,replacements,coverage};
+  }
+  if(!best)return song;
+  const source=best.donor.resolvedLyrics;
+  return {...song,resolvedLyrics:{...base,rawLines:base.rawLines||base.lines,
+    lines:base.lines.flatMap(line=>best.replacements.get(line)||[line]),
+    selectionTiming:base.selectionTiming||lyricQuality(base.lines,song).slice(0,2),
+    source:`${base.source} · 对唱补全：${source.source||best.donor.id}`,
+    authors:[base.authors,`对唱补全：${source.authors||source.source||best.donor.id}`].filter(Boolean).join(' · ')}};
+}
+
+export const supplementLyrics=(song,donors)=>supplementTranslations(supplementDuet(song,donors),donors);
 
 // Recording identity is checked before donors reach here; align sentences in order, including split lines.
 export function supplementTranslations(song, donors) {

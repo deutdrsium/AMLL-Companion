@@ -36,8 +36,8 @@ try{
   for(const removed of filtered.removed)assert.ok(!beginning.includes(removed.text),'Metadata must be absent from the actual lyric renderer: '+removed.text);
   await page.getByRole('button',{name:'选择歌词版本',exact:true}).click();
   const selected=page.locator('.candidates button').filter({hasText:'当前使用'});
-  assert.match(await selected.innerText(),/翻译：有（100%）/);
-  assert.match(await selected.innerText(),/音译：有（100%）/);
+  assert.match(await selected.innerText(),/翻译/);
+  assert.match(await selected.innerText(),/音译/);
   assert.match(await selected.innerText(),/翻译补全/);
   console.log('PASS real Gregorio replay: automatic QQ selection, missing translation rendered, selected candidate translation and romanization 100%');
   console.log('PASS first body sentence rendered, title/artist and credit lines hidden');

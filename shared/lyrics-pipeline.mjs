@@ -1,4 +1,4 @@
-import {compareLyrics,supplementTranslations} from './lyrics-quality.mjs';
+import {compareLyrics,supplementLyrics} from './lyrics-quality.mjs';
 import {musicTitles,musicArtists} from './matching.mjs';
 
 export async function searchProgressively(music,signal,{metadata,sources,web,onMetadata,onProgress,canPreview=()=>true}){
@@ -33,7 +33,7 @@ export async function searchProgressively(music,signal,{metadata,sources,web,onM
   signal.throwIfAborted();
   // Expanded metadata is authoritative; an earlier provisional match cannot bypass its ambiguity check.
   const eligible=[...new Map((await waves.at(-1)).flatMap(r=>r?.eligible??(r?.match?[r.match]:[])).map(song=>[song.id,song])).values()];
-  const finalMatches=eligible.map(song=>supplementTranslations(song,eligible)).sort(compareLyrics);
+  const finalMatches=eligible.map(song=>supplementLyrics(song,eligible)).sort(compareLyrics);
   for(const song of finalMatches)items.set(song.id,song);
   let result={...snapshot(),match:finalMatches[0]||null};
   if(!result.match){

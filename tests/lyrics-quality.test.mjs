@@ -32,11 +32,11 @@ test('AMLL quality ranking includes matching album variants and preserves unreso
  assert.deepEqual(amllCandidates({match:a,items:[a,b,wrong]},music).map(s=>s.id),[1,2,3]);
  assert.deepEqual(amllCandidates({match:null,items:[a,b]},music),[]);
 });
-test('candidate details explicitly report present and absent lyric features',()=>{
+test('candidate details list only available lyric features',()=>{
  const description=lyricDetails([line(true,'translation'),line(false)]);
- assert.match(description,/逐词（50%）/);assert.match(description,/翻译：有（50%）/);
- assert.match(description,/音译：无/);assert.match(description,/和声：无/);
- assert.match(description,/对唱：无/);assert.match(description,/2 行/);
+ assert.match(description,/逐词（50%）/);assert.match(description,/翻译/);
+ assert.doesNotMatch(description,/音译|和声/);
+ assert.doesNotMatch(description,/对唱|：无/);assert.match(description,/2 行/);
  assert.match(lyricDetails([line(false)]),/^逐行/);
 });
 
