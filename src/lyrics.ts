@@ -9,6 +9,7 @@ import {resolveMetadata} from '../shared/metadata.mjs';
 import {searchProgressively} from '../shared/lyrics-pipeline.mjs';
 import {memoizeSearchRequest} from '../shared/search-work.mjs';
 import {lrclibRows} from '../shared/lyrics-http.mjs';
+import {cleanLyricLines} from '../shared/lyric-metadata.mjs';
 export type SearchResult={items:Song[];match:Song|null;warning?:string};
 const base = "https://api.amll.dev/v1/lyrics";
 const cache = new Map<number | string, Song>();
@@ -67,6 +68,11 @@ export async function searchLyrics(
   });
 }
 export async function getLyrics(song: Song, signal: AbortSignal) {
+  const result=await loadLyrics(song,signal);
+  const lines=cleanLyricLines(result.lines,song);
+  return lines===result.lines?result:{...result,rawLines:('rawLines' in result?result.rawLines:undefined)||result.lines,lines};
+}
+async function loadLyrics(song: Song, signal: AbortSignal) {
   signal.throwIfAborted();
   if (song.resolvedLyrics) return song.resolvedLyrics;
   if (song.source && catalogueProviders.includes(song.source)) return getProviderLyrics(song, signal);

@@ -29,6 +29,7 @@ import {
 import { getLyrics, searchLyrics } from "./lyrics";
 import { lyricDetails,compareLyrics } from '../shared/lyrics-quality.mjs';
 import { providerNames } from '../shared/provider-lyrics.mjs';
+import {cleanLyricLines} from '../shared/lyric-metadata.mjs';
 import {
   PlaybackClock,
   readOffsets,
@@ -256,7 +257,7 @@ export default function App() {
       const display=(song:Song)=>{
         if(!song.resolvedLyrics)return;
         displayed=song;const result=song.resolvedLyrics;
-        setLines(result.lines);setSelectedSongId(song.id);setAuthors(result.authors);
+        setLines(cleanLyricLines(result.lines,song));setSelectedSongId(song.id);setAuthors(result.authors);
         setLyricSource(result.source);setLyricStatus('逐词歌词');
       };
       const updateCandidates=(items:Song[])=>setCandidates(previous=>{
@@ -443,7 +444,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.8</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.9</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
@@ -807,7 +808,7 @@ export default function App() {
                       {s.artistNames.join(" / ")} · {s.albumNames.join(" / ")} · {s.resolvedLyrics?.source || providerNames[s.source || 'amll']}
                     </span>
                     {s.sourceUrl && <span className="lyric-details" title={s.sourceUrl}>{s.sourceUrl}</span>}
-                    <span className="lyric-details">{s.resolvedLyrics ? lyricDetails(s.resolvedLyrics.lines)
+                    <span className="lyric-details">{s.resolvedLyrics ? lyricDetails(s.resolvedLyrics.lines,s)
                       : s.inspectionError ? `检测失败：${s.inspectionError}（可点击重试）` : '正在检测逐词、翻译、音译、和声及对唱…'}</span>
                   </button>
                 ))}

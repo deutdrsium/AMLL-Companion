@@ -1,10 +1,9 @@
 // Compare parsed timing, not format names: TTML can contain only line timing.
 import { bestMatch, normalize } from './matching.mjs';
+import {cleanLyricLines} from './lyric-metadata.mjs';
 
-const credit=/^\s*(?:作词|作曲|作詞|作編曲|编曲|編曲|词曲|詞曲|词|詞|曲|制作人|製作人|演唱|歌手|专辑|專輯|lyrics\s*(?:by)?|music\s*(?:by)?|written\s*by|composed\s*(?:by)?|produced\s*(?:by)?|arranged\s*(?:by)?)\s*[:：]/i;
 const lineText=line=>line.words.map(w=>w.word).join('');
-const mainLines=lines=>lines.filter((line,i)=>!line.isBG&&line.words?.some(w=>w.word?.trim())&&!credit.test(lineText(line))
-  &&!(i===0&&line.startTime===0&&/\s[-–—]\s/.test(lineText(line))&&lines.slice(1,4).some(l=>credit.test(lineText(l)))));
+const mainLines=(lines,context={})=>cleanLyricLines(lines,context).filter(line=>!line.isBG&&line.words?.some(w=>w.word?.trim()));
 
 export function amllCandidates(result, music) {
   if (!result.match) return [];
@@ -14,16 +13,16 @@ export function amllCandidates(result, music) {
       result.match[field]?.some(id => song[field]?.includes(id)))
       || (!!normalize(music.albumName) && song.albumNames.some(a => normalize(a) === normalize(music.albumName)))))];
 }
-export function lyricDetails(lines) {
-  const quality = lyricQuality(lines);
+export function lyricDetails(lines,context={}) {
+  const quality = lyricQuality(lines,context);
   return [quality[0] ? `逐词（${Math.round(quality[1] * 100)}%）` : '逐行',
     `翻译：${quality[2] ? `有（${Math.round(quality[2] * 100)}%）` : '无'}`,
     `音译：${quality[3] ? `有（${Math.round(quality[3] * 100)}%）` : '无'}`,
     `和声：${lines.some(l => l.isBG) ? '有' : '无'}`, `对唱：${lines.some(l => l.isDuet) ? '有' : '无'}`,
-    `${mainLines(lines).length} 行`].join(' · ');
+    `${mainLines(lines,context).length} 行`].join(' · ');
 }
-export function lyricQuality(lines) {
-  const main = mainLines(lines);
+export function lyricQuality(lines,context={}) {
+  const main = mainLines(lines,context);
   if (!main.length) return [0, 0, 0, 0, 0];
   const timed = main.filter(l => {
     const words = l.words.filter(w => w.word?.trim());
@@ -37,8 +36,8 @@ export function lyricQuality(lines) {
     Number(lines.some(l => l.isBG)) + Number(lines.some(l => l.isDuet))];
 }
 export function compareLyrics(a, b) {
-  const qa = lyricQuality(a.resolvedLyrics?.lines || []);
-  const qb = lyricQuality(b.resolvedLyrics?.lines || []);
+  const qa = lyricQuality(a.resolvedLyrics?.lines || [],a);
+  const qb = lyricQuality(b.resolvedLyrics?.lines || [],b);
   // Regrouping a translated sentence must not penalize the original word-timing coverage.
   qa.splice(0,2,...(a.resolvedLyrics?.selectionTiming||qa.slice(0,2)));
   qb.splice(0,2,...(b.resolvedLyrics?.selectionTiming||qb.slice(0,2)));
@@ -110,14 +109,14 @@ function translationPairs(target,from){
 // Recording identity is checked before donors reach here; align sentences in order, including split lines.
 export function supplementTranslations(song, donors) {
   const base=song.resolvedLyrics;
-  if(!base||!lyricQuality(base.lines)[0])return song;
-  let lines=base.lines.map(line=>({...line}));const sources=new Set(),authors=new Set();
+  if(!base||!lyricQuality(base.lines,song)[0])return song;
+  let lines=cleanLyricLines(base.lines,song).map(line=>({...line}));const sources=new Set(),authors=new Set();
   for(const donor of [...donors].sort((a,b)=>lyricQuality(b.resolvedLyrics?.lines||[])[2]-lyricQuality(a.resolvedLyrics?.lines||[])[2]||compareLyrics(a,b))){
     if(mainLines(lines).every(l=>l.translatedLyric?.trim()))break;
     if(donor.id===song.id||!donor.resolvedLyrics)continue;
     if(!mainLines(donor.resolvedLyrics.lines).some(l=>l.translatedLyric?.trim()))continue;
     let used=false;const remove=new Set();
-    for(const pair of translationPairs(mainLines(lines),mainLines(donor.resolvedLyrics.lines))){
+    for(const pair of translationPairs(mainLines(lines,song),mainLines(donor.resolvedLyrics.lines,donor))){
       const {target,from}=pair;
       if(target.some(l=>l.translatedLyric?.trim())||from.some(l=>!l.translatedLyric?.trim()))continue;
       // Do not regroup across a background line or another non-body annotation.
@@ -137,6 +136,6 @@ export function supplementTranslations(song, donors) {
     if(used){sources.add(donor.resolvedLyrics.source||String(donor.id));authors.add(donor.resolvedLyrics.authors||donor.resolvedLyrics.source||String(donor.id));}
   }
   if(!sources.size)return song;
-  return {...song,resolvedLyrics:{...base,lines,selectionTiming:base.selectionTiming||lyricQuality(base.lines).slice(0,2),source:`${base.source} · 翻译补全：${[...sources].join('、')}`,
+  return {...song,resolvedLyrics:{...base,lines,rawLines:base.rawLines||base.lines,selectionTiming:base.selectionTiming||lyricQuality(base.lines,song).slice(0,2),source:`${base.source} · 翻译补全：${[...sources].join('、')}`,
     authors:[base.authors,`翻译补全：${[...authors].join('、')}`].filter(Boolean).join(' · ')}};
 }

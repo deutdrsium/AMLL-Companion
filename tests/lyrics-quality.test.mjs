@@ -77,13 +77,14 @@ test('sentence alignment fills split and merged translations without consuming a
  const make=(text,time,translation='',word=false)=>({...line(word,translation),startTime:time,endTime:time+1000,
   words:word?[{word:text.slice(0,1),startTime:time,endTime:time+500},{word:text.slice(1),startTime:time+500,endTime:time+1000}]:[{word:text,startTime:time,endTime:time+1000}]});
  const original=song('word',[make('Song - Artist',0),make('词：Artist',20),make('青い光',1000,'',true),make('の中へ',3000,'',true),make('静かな夜を歩こう',7000,'',true),make('青い光',30000,'',true),make('長い道で星を見つけたんだ',35000,'',true)]);
+ original.musicNames=['Song'];original.artistNames=['Artist'];
  const donor=song('translated',[make('青い光の中へ',900,'第一句'),make('静かな',6900,'安静的'),make('夜を歩こう',7800,'夜晚'),make('青い光',29900,'后面的副歌'),make('長い道で星を見付けたんだ',34900,'小字差异也可对应')]);
  const result=supplementTranslations(original,[donor]);
- assert.deepEqual(result.resolvedLyrics.lines.slice(2).map(l=>l.translatedLyric),['第一句','安静的 夜晚','后面的副歌','小字差异也可对应']);
- assert.deepEqual(result.resolvedLyrics.lines.flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]),original.resolvedLyrics.lines.flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]));
+ assert.deepEqual(result.resolvedLyrics.lines.map(l=>l.translatedLyric),['第一句','安静的 夜晚','后面的副歌','小字差异也可对应']);
+ assert.deepEqual(result.resolvedLyrics.lines.flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]),original.resolvedLyrics.lines.slice(2).flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]));
  assert.equal(lyricQuality(result.resolvedLyrics.lines)[2],1);
  assert.equal(original.resolvedLyrics.lines.length,7);assert.equal(compareLyrics(result,original)<0,true);
- assert.deepEqual(result.resolvedLyrics.selectionTiming,lyricQuality(original.resolvedLyrics.lines).slice(0,2));
+ assert.deepEqual(result.resolvedLyrics.selectionTiming,lyricQuality(original.resolvedLyrics.lines,original).slice(0,2));
 });
 test('alignment leaves unrelated text untouched and never replaces an existing translation',async()=>{
  const {supplementTranslations}=await import('../shared/lyrics-quality.mjs');

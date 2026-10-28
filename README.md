@@ -55,6 +55,14 @@ DuckDuckGo [并不保证支持 `filetype:lrc`](https://duckduckgo.com/duckduckgo
 
 从 0.6.8 起，逐词版本缺少的翻译按连续原文片段对齐，不要求总行数或分句相同。忽略署名和开头带署名的歌名信息；每侧可组合最多三行，允许长句中少量字词差异，并用时间及先后顺序约束重复副歌，避免借用另一段的翻译。优先使用翻译最完整的来源。一句译文覆盖多行逐词原文时，合并对应显示句，完整保留各词起止时间及音译；原始逐词覆盖程度仍用于优选，不因显示句合并而降级。已有翻译保留，不匹配的部分留空，来源记录翻译提供方。正文覆盖率不计算歌名及署名行。
 
+## 歌词元信息过滤（0.6.9）
+
+读取和显示歌词时统一过滤明确的信息行，原始数据保留在 `rawLines`。只检查开头前 8 行且在 20 秒以内，或末尾后 6 行且在结束前 20 秒以内的行；时间范围本身不会触发删除。完整的“词／曲／编曲／Written by”等署名格式由 Regex 判断；“歌名--歌手”必须与当前候选的歌名、歌手或别名对应，支持标题版本括号、繁简体及多位歌手。单独的歌名、歌曲中间的类似文字、引用句和对唱标记保留。过滤只移除显示行，保留正文的逐词时间点、翻译和音译，不移动播放时间轴。
+
+本轮便利抽样尝试 12 首歌曲、两个来源，获得 11 首歌曲的 18 份有效版本，人工标注出 23 条信息行和 817 条正文行。原始数据识别出 22/23 条信息行（召回率 95.65%，漏报率 4.35%），正文误删 0/817。删除人工标注信息后的干净对照误删 0/817；向这些干净版本注入 234 条首尾信息行后，识别 234/234、漏报 0，正文误删 0/817，正文对象和时间点保持不变。原始样本漏掉一条括号破损的标题；为避免仅凭横线误删正文，暂保留。
+
+这不是独立留出的统计评测，固定注入模板的 100% 不能推广到未知格式。逐版本人工标注位置、计数和原始响应哈希见 [评估报告](docs/metadata-filter-evaluation.json)。完整歌词仅存本机被忽略的测试输出，不随代码提交。复现命令为 `node tests/metadata-filter-benchmark.mjs --collect`，随后可不联网重跑同一批缓存；若目录返回其他版本，需先重新审核标注，脚本不会将未审核版本计入结果。
+
 ## 发行地区、原文名称与别名（0.6.4）
 
 Apple Music 的 SMTC 有时提供罗马音或英文名称。应用会先向 [MusicBrainz](https://musicbrainz.org) 查询当前作品及艺人别名，核对歌名、艺人和时长；没有时长时要求专辑匹配。确认身份后优先显示原文名称，并让歌词来源、候选筛选、网页兜底和对齐音频匹配共用已确认的别名。例如，确认对应作品后，`hifumi` 可以与 `一二三` 相互匹配；不会将这个名字全局强制替换。
@@ -138,7 +146,8 @@ node tests/web-desktop.mjs        # 桌面网页兜底、优选顺序、验证�
 dotnet run --project tests/NativeLyricsTests/NativeLyricsTests.csproj -c Release # 网页 URL / IP 边界测试
 node tests/annotations-live.mjs   # more than words 完整翻译 / 音译保留验证
 node tests/translation-live.mjs   # グレゴリオ 实际跨来源分句补全与原逐词时间点保留
-node tests/translation-headless.mjs # 无窗口回放真实歌词，验证自动选用和翻译显示（先运行上一项及 npm run build）
+node tests/translation-headless.mjs # 无窗口回放真实歌词，验证自动选用、翻译与元信息隐藏（先运行上一项及 npm run build）
+node tests/metadata-filter-benchmark.mjs --collect # 真实歌词与成对脏数据注入评估，输出 docs/metadata-filter-evaluation.json
 node tests/annotations-desktop.mjs # 桌面渲染和翻译 / 音译覆盖率（先构建桌面）
 node tests/display-desktop.mjs     # 显示开关独立性、持久化及精简界面（先构建桌面）
 cargo test --release --locked --manifest-path native/unilyric-bridge/Cargo.toml -p lyrics_helper_lite --lib # 网易云解析回归

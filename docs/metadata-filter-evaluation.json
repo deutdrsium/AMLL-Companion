@@ -1,0 +1,333 @@
+{
+  "method": "Convenience sample; manual raw-line labels plus paired deterministic metadata injection. Not a held-out benchmark.",
+  "attemptedSongs": 12,
+  "validVersions": 18,
+  "excludedUntimedVersions": 1,
+  "songs": 11,
+  "natural": {
+    "tp": 22,
+    "fp": 0,
+    "fn": 1,
+    "tn": 817,
+    "precision": 1,
+    "recall": 0.9565217391304348,
+    "missRate": 0.043478260869565216,
+    "falsePositiveRate": 0
+  },
+  "clean": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "tn": 817,
+    "precision": null,
+    "recall": null,
+    "missRate": null,
+    "falsePositiveRate": 0
+  },
+  "injected": {
+    "tp": 234,
+    "fp": 0,
+    "fn": 0,
+    "tn": 817,
+    "precision": 1,
+    "recall": 1,
+    "missRate": 0,
+    "falsePositiveRate": 0
+  },
+  "records": [
+    {
+      "title": "七里香",
+      "provider": "qq",
+      "id": "qq:002mKYuI37UbwX",
+      "rawLines": 38,
+      "metadataIndices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "detected": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "7c3e5f8e1d28a8bb21921d0099e7492a3ee5bbdbf8a2c8ea507cf53fdb20999a"
+    },
+    {
+      "title": "グレゴリオ",
+      "provider": "qq",
+      "id": "qq:001QmHeG32Bm5N",
+      "rawLines": 46,
+      "metadataIndices": [
+        0,
+        1,
+        2
+      ],
+      "detected": [
+        0,
+        1,
+        2
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "daf64b9ffaf59131e7ba55295b6423a570a74c54d1c15c4e4535e87666ca089a"
+    },
+    {
+      "title": "グレゴリオ",
+      "provider": "netease",
+      "id": "netease:31546851",
+      "rawLines": 49,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "eeb071546ce23fbc30bfdd6b79bfb4157e6a087b61ec82a369ca5f6f334c9b66"
+    },
+    {
+      "title": "more than words",
+      "provider": "qq",
+      "id": "qq:0014AXGx1Sp8aH",
+      "rawLines": 61,
+      "metadataIndices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "detected": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "c0f701f7ce614a1378739a1de542751052e3860f66d0d772c894123aaa4f7996"
+    },
+    {
+      "title": "more than words",
+      "provider": "netease",
+      "id": "netease:2100653087",
+      "rawLines": 43,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "eff298fac3465ffc7d84497980c10119285f750097c5f9f3eeb554f78c74c409"
+    },
+    {
+      "title": "Fly Me to the Moon",
+      "provider": "qq",
+      "id": "qq:003O2Em20BhXrs",
+      "rawLines": 26,
+      "metadataIndices": [
+        0
+      ],
+      "detected": [
+        0
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "1fbc7bd26be870d9145093c19decc947a96c1b5c8f5ad8ff6a4f7ae79522b9c1"
+    },
+    {
+      "title": "Numb",
+      "provider": "netease",
+      "id": "netease:4153366",
+      "rawLines": 35,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "0e0f6ac71a1e1eae2ea808778998b33f1f0e4f28bb097aafc0c283e19bbdd00f"
+    },
+    {
+      "title": "Fly Me to the Moon",
+      "provider": "netease",
+      "id": "netease:31517840",
+      "rawLines": 26,
+      "metadataIndices": [
+        0
+      ],
+      "detected": [
+        0
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "c3421c7aedacd58e12d51611ef469e50fb15a37e77abe90681fc0a5a8e4635c7"
+    },
+    {
+      "title": "Feeling Good",
+      "provider": "qq",
+      "id": "qq:0017XI2t2TkpMW",
+      "rawLines": 39,
+      "metadataIndices": [
+        0,
+        1
+      ],
+      "detected": [
+        0,
+        1
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "1d4e2eeb89fb1c135548c185de09d42e0f14a5540dad426723254494cd29e83b"
+    },
+    {
+      "title": "Wake Me Up",
+      "provider": "qq",
+      "id": "qq:003QJMY81FINdb",
+      "rawLines": 39,
+      "metadataIndices": [
+        0
+      ],
+      "detected": [
+        0
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "786d7493c2339db76d3894f871822888e6941eb6f57aea1339d46a7b106f6aa7"
+    },
+    {
+      "title": "Feeling Good",
+      "provider": "netease",
+      "id": "netease:521786182",
+      "rawLines": 37,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "bda6228d5974fa8677ed2402f6166362503cabd492bc794afc941f88f2ea46ec"
+    },
+    {
+      "title": "Wake Me Up",
+      "provider": "netease",
+      "id": "netease:27680985",
+      "rawLines": 36,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "5a773fb0512c9844220acb141ec02fb6755dd38d184826b5d2996d256e384ca6"
+    },
+    {
+      "title": "Lose Yourself",
+      "provider": "qq",
+      "id": "qq:001bBBy00o53FS",
+      "rawLines": 39,
+      "metadataIndices": [
+        0,
+        1
+      ],
+      "detected": [
+        0,
+        1
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "9a6bc61e28b583d9c081471df1f7ec35bc5ea362ea59c5925b3e143ed5cd9d92"
+    },
+    {
+      "title": "Take Me Home, Country Roads",
+      "provider": "qq",
+      "id": "qq:004QBhzt4KgsWC",
+      "rawLines": 32,
+      "metadataIndices": [
+        0,
+        1
+      ],
+      "detected": [
+        0,
+        1
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "080a913b782dabae31179d3234de2dbd14e73f29551f823afb97f99a03943154"
+    },
+    {
+      "title": "Lose Yourself",
+      "provider": "netease",
+      "id": "netease:26936683",
+      "rawLines": 89,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "91ce4ac7300d711b6b2f47a9fdc2e7e7afca7722d3dbc33087348941a8616f16"
+    },
+    {
+      "title": "Take Me Home, Country Roads",
+      "provider": "netease",
+      "id": "netease:1477101",
+      "rawLines": 33,
+      "metadataIndices": [],
+      "detected": [],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "09aeaddc36a8be9aba4e7222060b44f27e269be8fa79f0490579e57c7adc319e"
+    },
+    {
+      "title": "Dynamite",
+      "provider": "qq",
+      "id": "qq:002mEmdw4TIGen",
+      "rawLines": 79,
+      "metadataIndices": [
+        0
+      ],
+      "detected": [
+        0
+      ],
+      "missed": [],
+      "pairedBodyUnchanged": true,
+      "sha256": "ffd474ce66a6c415c3d7284676c19d58ffa683de4ce52d3e74a906362105b368"
+    },
+    {
+      "title": "Despacito",
+      "provider": "netease",
+      "id": "netease:456370734",
+      "rawLines": 93,
+      "metadataIndices": [
+        0,
+        1
+      ],
+      "detected": [
+        1
+      ],
+      "missed": [
+        0
+      ],
+      "pairedBodyUnchanged": true,
+      "sha256": "e3090fa2e7c6857caadad97bb613e140f03de02b48542b6483f91d86e4ce0cbe"
+    }
+  ],
+  "failures": [
+    {
+      "title": "七里香",
+      "provider": "netease",
+      "error": "no matching catalogue entry"
+    },
+    {
+      "title": "Hotel California",
+      "provider": "qq",
+      "error": "QQ 此版本没有歌词"
+    },
+    {
+      "title": "Numb",
+      "provider": "qq",
+      "error": "QQ 此版本没有歌词"
+    },
+    {
+      "title": "Despacito",
+      "provider": "qq",
+      "error": "QQ 此版本没有歌词"
+    },
+    {
+      "title": "Dynamite",
+      "provider": "netease",
+      "error": "no matching catalogue entry"
+    }
+  ]
+}

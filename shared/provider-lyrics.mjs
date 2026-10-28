@@ -1,6 +1,7 @@
 import { bestMatch, normalize, simplify, musicTitles, artistQueries } from './matching.mjs';
 import { lyricQuality, resolveBest } from './lyrics-quality.mjs';
 import {eachSearchQuery,memoizeSearchRequest} from './search-work.mjs';
+import {cleanLyricLines} from './lyric-metadata.mjs';
 
 export const providerNames = { kugou: '酷狗音乐', netease: '网易云音乐', qq: 'QQ 音乐', kuwo: '酷我音乐', migu: '咪咕音乐', web: '网页 LRC', lrclib: 'LRCLIB', amll: 'AMLL' };
 export const catalogueProviders = ['netease', 'kugou', 'qq', 'kuwo', 'migu'];
@@ -49,13 +50,14 @@ export async function getProviderLyrics(song, signal, request = providerRequest)
       || l.words.some(w => typeof w.word !== 'string' || !Number.isFinite(w.startTime) || !Number.isFinite(w.endTime))))
     throw new Error(`${providerNames[song.source]} 此版本没有同步歌词`);
   if (!hasLyricContent(data.lines, song)) throw new Error(`${providerNames[song.source]} 此版本仅有歌曲署名，没有歌词正文`);
-  const source = `${providerNames[song.source]} · ${lyricQuality(data.lines)[0] ? '逐词同步' : '逐行同步'}`;
-  return { lines: data.lines, source, authors: source };
+  const lines=cleanLyricLines(data.lines,song);
+  const source = `${providerNames[song.source]} · ${lyricQuality(lines)[0] ? '逐词同步' : '逐行同步'}`;
+  return { lines, rawLines:data.lines, source, authors: source };
 }
 export function hasLyricContent(lines, song) {
-  return lines.some(line => {
+  return cleanLyricLines(lines,song).some(line => {
     const text = line.words.map(w => w.word).join('').trim();
-    if (!text || /^(?:作词|作曲|编曲|词|曲|制作人|演唱|歌手|专辑|lyrics\s*(?:by)?|written\s*by|composed\s*(?:by)?|produced\s*(?:by)?|arranged\s*(?:by)?)\s*[:：]/i.test(text)) return false;
+    if (!text) return false;
     const titles = song.musicNames || [];
     const creditName = value => normalize(value.replace(/\([^)]*\)|（[^）]*）/g, ''));
     return !titles.some(title => normalize(text) === normalize(title)

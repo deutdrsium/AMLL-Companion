@@ -3,6 +3,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {compatibleSongs,canAutoSelect} from '../shared/provider-lyrics.mjs';
 import {supplementTranslations,lyricQuality,compareLyrics} from '../shared/lyrics-quality.mjs';
+import {cleanLyricLines} from '../shared/lyric-metadata.mjs';
 
 const request=(provider,operation,data)=>new Promise((resolve,reject)=>{
   const child=spawn('native/unilyric-bridge/target/release/unilyric-bridge.exe',['--lyrics'],{windowsHide:true});let output='';
@@ -23,7 +24,7 @@ assert.equal(lyricQuality(songs[1].resolvedLyrics.lines)[2],1);
 const merged=supplementTranslations(selected,songs);
 assert.equal(lyricQuality(merged.resolvedLyrics.lines)[2],1,'Every body sentence must retain its translation');
 assert.deepEqual(merged.resolvedLyrics.lines.flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]),
-  selected.resolvedLyrics.lines.flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]),'Original word times must be unchanged');
+  cleanLyricLines(selected.resolvedLyrics.lines,selected).flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]),'Original body word times must be unchanged');
 await mkdir('test-results',{recursive:true});
 await writeFile('test-results/translation-live.json',JSON.stringify({music,songs},null,2));
 console.log('PASS Gregorio QQ word timing + NetEase translation: body translation 100%, romanization 100%, all word timestamps unchanged');
