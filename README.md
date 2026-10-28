@@ -49,9 +49,11 @@ DuckDuckGo [并不保证支持 `filetype:lrc`](https://duckduckgo.com/duckduckgo
 
 自动选择在查询完成后应用，不在播放中反复替换。切歌会取消旧查询，防止旧歌词覆盖新曲目。LRCLIB 查询成功后在本机缓存 7 天，失败或空结果不缓存。
 
-## 原文名称与别名（0.6.2）
+## 原文名称与别名（0.6.3）
 
 Apple Music 的 SMTC 有时提供罗马音或英文名称。应用会先向 [MusicBrainz](https://musicbrainz.org) 查询当前作品及艺人别名，核对歌名、艺人和时长；没有时长时要求专辑匹配。确认身份后优先显示原文名称，并让歌词来源、候选筛选、网页兜底和对齐音频匹配共用已确认的别名。例如，确认对应作品后，`hifumi` 可以与 `一二三` 相互匹配；不会将这个名字全局强制替换。
+
+歌名也会补全原文：例如 `Moonbath / Yorushika` 可还原为 `月光浴 / ヨルシカ`。当带歌手的查询未命中时，会独立查询录音的歌名别名，再读取完整作品核对艺人、时长和版本，避免大量其他艺人的同名歌曲挤占结果。不通过机器翻译猜测歌名，也不为个别歌曲硬编码替换。
 
 确认结果在本机缓存 30 天，最多 100 首。首次别名查询最多等待 10 秒，请求间隔至少 1.1 秒；服务不可用、没有记录或存在多个无法区分的身份时，继续使用播放器信息。不会改变原始 SMTC 数据或播放控制。手动搜索时也不会降低录音版本和时长检查。
 
@@ -121,7 +123,7 @@ npm run pack         # 生成 release/ 下的 Windows x64 便携目录与 ZIP
 npm test                         # 时钟、匹配、请求回退和歌词质量排序
 npm run test:desktop              # 构建并运行 WebView2 + 真实 SMTC 测试发布端
 node tests/lyrics-live.mjs        # AMLL 实际 API 查询
-node tests/metadata-live.mjs      # 通过原生 HTTP 验证 hifumi / 一二三（先构建 NativeLyricsTests）
+node tests/metadata-live.mjs      # 原生 HTTP 验证 hifumi / 一二三、Moonbath / 月光浴（先构建 NativeLyricsTests）
 node tests/metadata-headless.mjs  # 无窗口验证别名、缓存、手动纠正保存/撤销与编辑竞态（先 npm run build）
 node tests/providers-live.mjs     # 跨曲风的网易云 / 酷狗查询与同步歌词下载
 node tests/expanded-providers-live.mjs # QQ / 酷我 / 咪咕实际搜索、匹配与歌词下载

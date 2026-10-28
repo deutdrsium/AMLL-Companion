@@ -37,6 +37,21 @@ test('all supplied collaborators must match; punctuation in a band name is prese
  const band={...record,'artist-credit':[{name:'Earth, Wind & Fire',artist:{id:artistId,name:'Earth, Wind & Fire',aliases:[]}}]};
  assert.deepEqual(metadataFromRecording(band,{...music,artists:['Earth, Wind & Fire']}).artists,['Earth, Wind & Fire']);
 });
+test('Moonbath resolves through an independent title alias query when credited artist search misses Yorushika',async()=>{
+ const input={...music,musicName:'Moonbath',artists:['Yorushika'],albumName:'Moonbath - Single',duration:248000};
+ const original={...record,title:'月光浴',length:248000,aliases:[{name:'Moonbath',type:'Recording name'},{name:'Gekkouyoku'}],
+  'artist-credit':[{name:'ヨルシカ',artist:{id:artistId,name:'ヨルシカ',aliases:[{name:'Yorushika',type:'Artist name'}]}}]};
+ const queries=[];
+ const result=await resolveMetadata(input,signal(),{storage:storage(),lookup:async url=>{
+  const query=new URL(url).searchParams.get('query');if(!query)return original;
+  queries.push(query);return {recordings:query==='alias:"Moonbath"'?[original]:[]};
+ }});
+ assert.equal(result.music.musicName,'月光浴');assert.deepEqual(result.music.artists,['ヨルシカ']);
+ assert.ok(result.music.titleAliases.includes('Moonbath'));assert.equal(queries.length,2);
+ const candidate={id:1,musicNames:['月光浴'],artistNames:['ヨルシカ'],albumNames:[],duration:248000};
+ assert.equal(bestMatch([candidate],result.music),candidate);
+ assert.equal(metadataFromRecording({...original,'artist-credit':record['artist-credit']},input),null);
+});
 test('metadata cache reuses confirmed identity while keeping the current player ID',async()=>{
  const store=storage(), request=lookupFor([record]);
  const first=await resolveMetadata(music,signal(),{storage:store,lookup:request});

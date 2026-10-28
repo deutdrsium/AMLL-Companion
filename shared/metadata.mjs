@@ -103,6 +103,8 @@ export async function resolveMetadata(music,signal,options={}){
     const base='https://musicbrainz.org/ws/2/recording';
     const titleQuery='(recording:'+phrase(titleWithoutCredits(music.musicName))+' OR alias:'+phrase(titleWithoutCredits(music.musicName))+')';
     let response=await request(base+'?'+new URLSearchParams({query:titleQuery+' AND ('+artistQueries.join(' OR ')+')',fmt:'json',limit:'10'}),taskSignal);
+    // Credited artist searches can miss aliases; a title-only OR query can bury the translated title among unrelated exact names.
+    if(!response.recordings?.length)response=await request(base+'?'+new URLSearchParams({query:'alias:'+phrase(titleWithoutCredits(music.musicName)),fmt:'json',limit:'10'}),taskSignal);
     if(!response.recordings?.length)response=await request(base+'?'+new URLSearchParams({query:titleQuery,fmt:'json',limit:'10'}),taskSignal);
     let candidates=[...new Map((response.recordings||[]).filter(r=>uuid.test(r.id||'')&&durationMatches(r,music)).map(r=>[r.id,r])).values()];
     const album=candidates.filter(r=>albumMatches(r,music));if(album.length)candidates=album;
