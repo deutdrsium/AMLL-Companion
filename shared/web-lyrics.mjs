@@ -1,5 +1,5 @@
 import { parseLrc, parseLrcA2 } from '@applemusic-like-lyrics/lyric';
-import { normalize, artistNames, simplify } from './matching.mjs';
+import { normalize, artistNames, simplify, musicTitles, musicArtists, artistQueries } from './matching.mjs';
 import { compareLyrics, lyricQuality } from './lyrics-quality.mjs';
 import { providerRequest, hasLyricContent } from './provider-lyrics.mjs';
 
@@ -57,14 +57,14 @@ export function webSong(text, evidence, music, url) {
   if (typeof text !== 'string' || text.length > 500_000) return null;
   const tags = name => [...text.matchAll(new RegExp(`\\[${name}:([^\\]\\r\\n]*)\\]`, 'gi'))].map(m => m[1].trim()).filter(Boolean);
   const titles = tags('ti'), artists = tags('ar');
-  const title = normalize(music.musicName), names = artistNames(music.artists).map(normalize);
-  if (!title || !names.length) return null;
-  if (titles.length && titles.some(t => normalize(t) !== title)) return null;
+  const allowedTitles = musicTitles(music).map(normalize), names = artistNames(musicArtists(music)).map(normalize);
+  if (!allowedTitles.length || !names.length) return null;
+  if (titles.length && titles.some(t => !allowedTitles.includes(normalize(t)))) return null;
   if (artists.length && artists.some(a => !artistNames([a]).some(n => names.includes(normalize(n))))) return null;
   let filename = '';
   try { filename = decodeURIComponent(new URL(url).pathname.split('/').at(-1)); } catch { }
   const page = normalize(evidence || filename);
-  if ((!titles.length && !page.includes(title)) || (!artists.length && !names.some(n => page.includes(n)))) return null;
+  if ((!titles.length && !allowedTitles.some(title=>page.includes(title))) || (!artists.length && !names.some(n => page.includes(n)))) return null;
   const versions = s => (simplify(s).match(/live|remix|acoustic|instrumental|现场|演唱会|伴奏/gi) || []).map(s => s.toLowerCase()).sort().join();
   if (versions(titles.join(' ') || evidence) !== versions(`${music.musicName} ${music.albumName || ''}`)) return null;
   const length = tags('length')[0]?.match(/^(\d+):(\d+(?:\.\d+)?)$/);
@@ -76,7 +76,7 @@ export function webSong(text, evidence, music, url) {
   try { lines = /<\d{1,3}:[0-5]\d[.:]\d+>/.test(lrc) ? parseLrcA2(lrc) : parseLrc(lrc); }
   catch { return null; }
   lines = lines.filter(l => l.words.some(w => w.word.trim()));
-  if (!hasLyricContent(lines, { musicNames: [music.musicName], artistNames: music.artists })) return null;
+  if (!hasLyricContent(lines, { musicNames: musicTitles(music), artistNames: musicArtists(music) })) return null;
   if (lines.length < 3 || new Set(lines.map(l => l.startTime)).size < 3
     || lines.some(l => !Number.isFinite(l.startTime) || l.startTime < 0
       || (music.duration > 0 && l.startTime > music.duration + 3000))) return null;
@@ -89,17 +89,21 @@ export function webSong(text, evidence, music, url) {
 export async function searchWebLyrics(music, signal, request = providerRequest) {
   signal.throwIfAborted();
   if (!music.artists?.length) return { items: [], match: null };
-  const key = JSON.stringify([music.musicName, music.artists, music.albumName, music.duration]);
+  const key = JSON.stringify([music.musicName, music.artists, music.albumName, music.duration, music.titleAliases, music.artistAliases]);
   if (cache.has(key)) return cache.get(key);
-  const query = { title: music.musicName, artist: music.artists.join(' ') };
+  const queries=[...new Map([...artistQueries(music).map(artists=>({title:music.musicName,artist:artists.join(' ')})),
+    ...musicTitles(music).map(title=>({title,artist:music.artists.join(' ')}))].map(q=>[JSON.stringify(q),q])).values()].slice(0,4);
+  let failures = 0;
+  const visited=new Set();
+  for(const query of queries){
   const search = await request('web', 'search', query, signal);
   let links = searchLinks(search.text, search.url);
   if (!links.length) {
     const relaxed = await request('web', 'search', { ...query, relaxed: true }, signal);
     links = searchLinks(relaxed.text, relaxed.url);
   }
-  let failures = 0;
-  const results = await Promise.all(links.map(async url => {
+  const results = await Promise.all(links.filter(url=>!visited.has(url)).map(async url => {
+    visited.add(url);
     try {
       const response = await request('web', 'get', { url }, signal);
       const page = pageLyrics(response.text, response.url, response.contentType);
@@ -119,7 +123,8 @@ export async function searchWebLyrics(music, signal, request = providerRequest) 
   signal.throwIfAborted();
   const items = [...new Map(results.filter(Boolean).map(s => [s.lyrics, s])).values()].sort(compareLyrics);
   const result = { items, match: items[0] || null };
-  if (items.length) { if (cache.size >= 20) cache.delete(cache.keys().next().value); cache.set(key, result); }
-  if (!items.length && failures) throw new Error('未找到匹配的网页 LRC，部分歌词网页无法访问');
-  return result;
+  if (items.length) { if (cache.size >= 20) cache.delete(cache.keys().next().value); cache.set(key, result); return result; }
+  }
+  if (failures) throw new Error('未找到匹配的网页 LRC，部分歌词网页无法访问');
+  return {items:[],match:null};
 }

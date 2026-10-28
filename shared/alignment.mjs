@@ -1,4 +1,4 @@
-import { bestMatch } from './matching.mjs';
+import { bestMatch, musicArtists, musicTitles } from './matching.mjs';
 import { canAutoSelect } from './provider-lyrics.mjs';
 import { lyricQuality } from './lyrics-quality.mjs';
 
@@ -6,7 +6,8 @@ export function audioCandidates(songs, music) {
   const compatible=songs.filter(s => ['netease','qq'].includes(s.source) && bestMatch([s],music) && canAutoSelect(s,music));
   return ['netease','qq'].flatMap(provider=>compatible.filter(s=>s.source===provider).slice(0,2))
     .map(s => ({ server:s.source==='qq'?'tencent':'netease', id:s.providerData.provider_id,
-      title:s.musicNames[0], artists:s.artistNames }));
+      title:s.musicNames[0], titles:[...new Set([...s.musicNames,...musicTitles(music)])],
+      artists:[...new Set([...s.artistNames,...musicArtists(music)])] }));
 }
 export function lyricLanguage(lines) {
   const text=lines.map(l=>l.words.map(w=>w.word).join('')).join('');

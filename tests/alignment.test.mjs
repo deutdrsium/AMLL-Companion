@@ -10,6 +10,13 @@ test('audio matching rejects a different artist or recording and unsupported sou
  assert.equal(lyricLanguage([{words:[{word:'普通歌词'}]}]),'zh');
  assert.equal(lyricLanguage([{words:[{word:'Hello'}]}]),'auto');
 });
+test('verified aliases reach the final audio metadata check without accepting unrelated artists',()=>{
+ const track={...music,musicName:'原文歌名',artists:['一二三'],titleAliases:['Test'],artistAliases:['hifumi']};
+ const [candidate]=audioCandidates([{...song,artistNames:['hifumi']},{...song,artistNames:['Other']}],track);
+ assert.ok(candidate.titles.includes('原文歌名')&&candidate.titles.includes('Test'));
+ assert.ok(candidate.artists.includes('一二三')&&candidate.artists.includes('hifumi'));
+ assert.equal(audioCandidates([{...song,artistNames:['Other']}],track).length,0);
+});
 test('cancellation rejects a late alignment and unsubscribes progress',async()=>{
  let resolve,started;const ready=new Promise(r=>started=r);let canceled=false,removed=false;
  const bridge={alignmentStatus:async()=>({available:true}),subscribeAlignment:()=>()=>{removed=true;},cancelAlignment:async()=>{canceled=true;},alignLyrics:()=>{started();return new Promise(r=>resolve=r);}};

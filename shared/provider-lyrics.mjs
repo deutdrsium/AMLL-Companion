@@ -1,4 +1,4 @@
-import { bestMatch, normalize, simplify } from './matching.mjs';
+import { bestMatch, normalize, simplify, musicTitles, artistQueries } from './matching.mjs';
 import { lyricQuality, resolveBest } from './lyrics-quality.mjs';
 
 export const providerNames = { kugou: '酷狗音乐', netease: '网易云音乐', qq: 'QQ 音乐', kuwo: '酷我音乐', migu: '咪咕音乐', web: '网页 LRC', lrclib: 'LRCLIB', amll: 'AMLL' };
@@ -62,11 +62,11 @@ export function hasLyricContent(lines, song) {
 }
 export async function searchProvider(provider, music, signal, request = providerRequest) {
   let items = [];
-  for (const title of new Set([music.musicName, simplify(music.musicName)])) {
-    const rows = await request(provider, 'search', { title, artists: music.artists.map(simplify),
+  search: for (const title of musicTitles(music)) for (const artists of artistQueries(music)) {
+    const rows = await request(provider, 'search', { title, artists: artists.map(simplify),
       album: music.albumName || null, duration: music.duration || null }, signal);
     items = compatibleSongs(rows, provider, music);
-    if (items.length) break;
+    if (items.length) break search;
   }
   const match = await resolveBest(items.filter(s => canAutoSelect(s, music)),
     (song, signal) => getProviderLyrics(song, signal, request), signal);

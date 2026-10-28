@@ -1,11 +1,10 @@
-import { artistNames, bestMatch, simplify, titleWithoutCredits } from "./matching.mjs";
+import { artistNames, bestMatch, simplify, musicTitles } from "./matching.mjs";
 
 export async function findLyrics(music, request, signal) {
   const items = new Map();
   const seen = new Set();
-  const titles = [...new Set([music.musicName, simplify(music.musicName),
-    titleWithoutCredits(music.musicName), simplify(titleWithoutCredits(music.musicName))])].filter(Boolean);
-  const artists = [...new Set(artistNames(music.artists).flatMap(a => [a, simplify(a)]))];
+  const titles = musicTitles(music);
+  const artists = [...new Set([...artistNames(music.artists),...artistNames(music.artistAliases||[]).slice(0,3)].flatMap(a => [a, simplify(a)]))];
   const queries = titles.flatMap(musicName => [
     ...artists.map(artistName => ({ musicName, artistName })), { musicName },
   ]);
@@ -25,7 +24,7 @@ export async function findLyrics(music, request, signal) {
       const match = bestMatch(all, music);
       // Read every page for this query before deciding whether recordings are ambiguous.
       if (!result.pagination?.hasMore) {
-        if (match) return { items: all, match };
+        if (match && !music.artistAliases?.length && !music.titleAliases?.length) return { items: all, match };
         break;
       }
       page++;

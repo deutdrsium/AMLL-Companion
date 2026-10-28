@@ -89,9 +89,11 @@ internal sealed class AlignmentService : IDisposable
                     using var document = JsonDocument.Parse(metadata.GetProperty("text").GetString()!);
                     if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() == 0) continue;
                     var song = document.RootElement[0];
-                    var title = Normalize(candidate.GetProperty("title").GetString() ?? "");
+                    var titles = candidate.TryGetProperty("titles", out var alternateTitles)
+                        ? alternateTitles.EnumerateArray().Select(t => Normalize(t.GetString() ?? "")).ToArray()
+                        : [Normalize(candidate.GetProperty("title").GetString() ?? "")];
                     var artist = Normalize(song.GetProperty("artist").ToString());
-                    if (Normalize(song.GetProperty("name").GetString() ?? "") != title || !candidate.GetProperty("artists").EnumerateArray()
+                    if (!titles.Contains(Normalize(song.GetProperty("name").GetString() ?? "")) || !candidate.GetProperty("artists").EnumerateArray()
                         .Any(a => Normalize(a.GetString() ?? "").Length > 0 && artist.Contains(Normalize(a.GetString()!)))) continue;
                     var fallbackUrl = song.GetProperty("url").GetString()!;
                     var audioUrl = fallbackUrl;

@@ -38,7 +38,9 @@ import {
 } from "../shared/clock.mjs";
 import { LiveLyrics, Timeline } from "./Playback";
 import { useLayoutMotion } from './useLayoutMotion';
-import type { PlayerState, Song, Command, WindowState } from "./types";
+import {MetadataEditor} from './MetadataEditor';
+import {readCorrections,saveCorrection,correctionKey,correctedMusic} from '../shared/metadata.mjs';
+import type { PlayerState, Song, Command, WindowState, Music } from "./types";
 
 const initial: PlayerState = {
   connected: false,
@@ -155,6 +157,8 @@ export default function App() {
   const [showRomanization, setShowRomanization] = useState(() => localStorage.getItem('show-romanization') !== 'false');
   const [alignmentEnabled, setAlignmentEnabled] = useState(() => localStorage.getItem('automatic-alignment') !== 'false');
   const [alignmentStatus, setAlignmentStatus] = useState('');
+  const [corrections,setCorrections]=useState(()=>readCorrections());
+  const [metadata,setMetadata]=useState<{key:string;music:Music;message:string}|null>(null);
   const clock = useRef(new PlaybackClock()).current;
   const activeRequest = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -168,6 +172,8 @@ export default function App() {
       ])
     : "";
   const offsetKey = songOffsetKey(state.music);
+  const manualRule=state.music?corrections.find(rule=>rule.key===correctionKey(state.music)):undefined;
+  const currentMusic=state.music?(metadata?.key===key?metadata.music:correctedMusic(state.music,corrections)):null;
   const songOffset = offsets.songs[offsetKey] || 0;
   const offset = offsets.global + songOffset;
   const mini =
@@ -226,9 +232,9 @@ export default function App() {
   useEffect(() => { localStorage.setItem('automatic-alignment', String(alignmentEnabled)); }, [alignmentEnabled]);
   useEffect(() => {
     setAlignmentStatus('');
-    if (!alignmentEnabled || !selectedSongId || !state.music || !lines.length) return;
+    if (!alignmentEnabled || !selectedSongId || !currentMusic || !lines.length) return;
     const controller = new AbortController();
-    void alignInBackground(state.music, lines, candidates, controller.signal, setAlignmentStatus).then(result => {
+    void alignInBackground(currentMusic, lines, candidates, controller.signal, setAlignmentStatus).then(result => {
       if (!result || controller.signal.aborted) return;
       const source = `${lyricSource} · 本地自动对齐`;
       setLines(result.lines); setLyricSource(source);
@@ -262,10 +268,13 @@ export default function App() {
       return;
     }
     setLyricStatus("正在检索歌词……");
-    const music = state.music;
+    const music = correctedMusic(state.music,corrections);
     const timer = setTimeout(async () => {
       try {
-        const { items, match, warning } = await searchLyrics(music, controller.signal);
+        const { items, match, warning } = await searchLyrics(music, controller.signal,{
+          manual:!!manualRule,
+          onMetadata:result=>{if(!controller.signal.aborted)setMetadata({key,...result});},
+        });
         if (controller.signal.aborted) return;
         setCandidates(items);
         if (!match) {
@@ -292,7 +301,7 @@ export default function App() {
       controller.abort();
       activeRequest.current?.abort();
     };
-  }, [key, retry]);
+  }, [key, retry, corrections]);
 
   useEffect(() => {
     if (!picker) return;
@@ -438,7 +447,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.1</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.2</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
@@ -508,7 +517,7 @@ export default function App() {
             {state.cover ? (
               <img
                 src={state.cover}
-                alt={`${state.music?.albumName || "当前歌曲"} 专辑封面`}
+                alt={`${currentMusic?.albumName || "当前歌曲"} 专辑封面`}
               />
             ) : (
               <div className="empty-art">
@@ -523,13 +532,13 @@ export default function App() {
           </div>
           <div className="track-info">
             <div>
-              <h1>{state.music?.musicName || "每一首，都值得沉浸"}</h1>
+              <h1>{currentMusic?.musicName || "每一首，都值得沉浸"}</h1>
               <p>
-                {state.music?.artists.join(" / ") ||
+                {currentMusic?.artists.join(" / ") ||
                   "在 Apple Music 中播放一首歌曲"}
               </p>
               <span>
-                {state.music?.albumName || "自动连接 Windows 媒体会话"}
+                {currentMusic?.albumName || "自动连接 Windows 媒体会话"}
               </span>
             </div>
             <span className={`equalizer ${state.playing ? "active" : ""}`}>
@@ -726,6 +735,10 @@ export default function App() {
                 <input type="checkbox" aria-label="自动生成逐字时间轴" checked={alignmentEnabled} onChange={e => setAlignmentEnabled(e.target.checked)} />
               </label>
               {alignmentStatus && <p className="hint" role="status">{alignmentStatus}</p>}
+              {state.music&&currentMusic&&<MetadataEditor key={correctionKey(state.music)} raw={state.music} music={currentMusic}
+                message={metadata?.key===key?metadata.message:''} saved={!!manualRule}
+                onSave={value=>{setMetadata(null);setCorrections(saveCorrection(state.music!,value));}}
+                onClear={()=>{setMetadata(null);setCorrections(saveCorrection(state.music!,null));}}/>}
               <label className="session-setting">
                 <span>播放来源</span>
                 <select

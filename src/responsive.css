@@ -26,6 +26,10 @@ body,
   font-size: 12px;
   margin-top: 20px;
 }
+.metadata-editor { margin-top: 22px; border-top: 1px solid #ffffff12; padding-top: 18px; }
+.metadata-editor summary { cursor: pointer; font-size: 12px; }
+.metadata-editor form label { display: grid; gap: 7px; margin-top: 12px; font-size: 12px; }
+.metadata-editor input { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid #ffffff25; border-radius: 7px; background: #ffffff09; color: inherit; font: inherit; }
 select {
   width: 100%;
   background: #1e1b22;

@@ -1,10 +1,10 @@
-import { bestMatch, normalize, simplify, titleWithoutCredits } from './matching.mjs';
+import { bestMatch, normalize, musicTitles } from './matching.mjs';
 import { lrclibRows } from './lyrics-http.mjs';
 import { canAutoSelect } from './provider-lyrics.mjs';
 
 export async function searchLrclib(music, signal, fetcher = fetch) {
   const items = new Map();
-  for (const title of new Set([music.musicName, simplify(music.musicName), titleWithoutCredits(music.musicName)])) {
+  for (const title of musicTitles(music)) {
     signal.throwIfAborted();
     const rows = await lrclibRows(title, signal, fetcher);
     for (const row of rows) {

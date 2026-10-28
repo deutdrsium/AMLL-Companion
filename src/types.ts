@@ -4,6 +4,8 @@ export interface Music {
   albumName: string;
   artists: string[];
   duration: number;
+  titleAliases?: string[];
+  artistAliases?: string[];
 }
 export interface Capabilities {
   play: boolean;

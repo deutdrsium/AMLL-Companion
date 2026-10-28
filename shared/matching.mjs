@@ -13,14 +13,17 @@ export function artistNames(artists) {
   return artists.flatMap((artist) => [artist, ...artist.split(/\s+(?:&|and|feat\.?|ft\.?|featuring|\/|x)\s+|[、，,；;]/i)])
     .flatMap(name => [name.trim(), name.replace(/\s*[（(][^()（）]+[)）]\s*$/, '').trim()]).filter(Boolean);
 }
+export const musicArtists=music=>[...new Set([...music.artists,...(music.artistAliases||[])])];
+export const musicTitles=music=>[...new Set([music.musicName,...(music.titleAliases||[])].flatMap(t=>[t,simplify(t),titleWithoutCredits(t),simplify(titleWithoutCredits(t))]))].filter(Boolean);
+export const artistQueries=music=>[...new Map([music.artists,...(music.artistAliases||[]).map(a=>[a])].map(a=>[JSON.stringify(a.map(n=>n.normalize('NFKC').toLocaleLowerCase())),a])).values()].slice(0,3);
 export function bestMatch(items, music) {
   const exact = items.filter(
     (item) =>
       item.musicNames.some(
-        (name) => normalize(titleWithoutCredits(name)) === normalize(titleWithoutCredits(music.musicName)),
+        (name) => musicTitles(music).some(title=>normalize(titleWithoutCredits(name)) === normalize(titleWithoutCredits(title))),
       ) &&
       music.artists.length > 0 &&
-      artistNames(music.artists).some((artist) =>
+      artistNames(musicArtists(music)).some((artist) =>
         artistNames(item.artistNames).some((name) => normalize(name) === normalize(artist)),
       ),
   );

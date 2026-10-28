@@ -5,6 +5,7 @@ import { searchLrclib } from "../shared/lrclib.mjs";
 import { searchProvider, getProviderLyrics, canAutoSelect, catalogueProviders } from '../shared/provider-lyrics.mjs';
 import { searchWebLyrics } from '../shared/web-lyrics.mjs';
 import { compareLyrics, lyricQuality, resolveBest, amllCandidates } from '../shared/lyrics-quality.mjs';
+import {resolveMetadata} from '../shared/metadata.mjs';
 const base = "https://api.amll.dev/v1/lyrics";
 const cache = new Map<number | string, Song>();
 async function request(
@@ -30,7 +31,11 @@ async function request(
 export async function searchLyrics(
   music: Music,
   signal: AbortSignal,
+  options: {manual?: boolean; onMetadata?: (result:{music:Music;message:string})=>void} = {},
 ): Promise<{ items: Song[]; match: Song | null; warning?: string }> {
+  const metadata=options.manual?{music,message:'已使用手动纠正的检索信息'}:await resolveMetadata(music,signal);
+  signal.throwIfAborted();music=metadata.music;
+  options.onMetadata?.(metadata);
   const results = await Promise.allSettled([
     (async () => {
       const result = await findLyrics(music, request, signal);
