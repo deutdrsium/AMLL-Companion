@@ -68,6 +68,8 @@ declare global {
   interface Window {
     companion?: {
       native: boolean;
+      debug?: boolean;
+      diagnosticLog?(value: {event:string;atMs:number;data:unknown}): void;
       alignmentStatus(): Promise<{available:boolean}>;
       alignLyrics(value:unknown): Promise<any>;
       cancelAlignment(id:string): Promise<void>;

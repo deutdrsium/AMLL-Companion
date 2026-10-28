@@ -3,8 +3,16 @@ import {
   LyricPlayer,
   type LyricPlayerRef,
 } from "@applemusic-like-lyrics/react";
-import type { LyricLine } from "@applemusic-like-lyrics/core";
+import { LyricPlayer as CoreLyricPlayer, type LyricLine } from "@applemusic-like-lyrics/core";
 import { PlaybackClock } from "../shared/clock.mjs";
+import {debugEvent,debugSpan} from '../shared/debug-diagnostics.mjs';
+
+class DebugLyricPlayer extends CoreLyricPlayer {
+  override setLyricLines(lines:LyricLine[],initialTime=0){
+    const end=debugSpan('lyrics.rebuild',{lines:lines.length,words:lines.reduce((sum,line)=>sum+line.words.length,0),initialTime});
+    try{super.setLyricLines(lines,initialTime);}finally{end();}
+  }
+}
 
 const time = (ms: number) =>
   `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
@@ -138,6 +146,9 @@ export function LiveLyrics({
     core?.setCurrentTime(Math.round(Math.max(0,clock.at()+offset)),true);
     core?.update(0);
     if(shown.current===visibleLines)return;
+    if(window.companion?.debug)debugEvent('lyrics.render',{lines:visibleLines.length,
+      words:visibleLines.reduce((sum,line)=>sum+line.words.length,0),
+      positionMs:Math.round(clock.at()+offset),reduceMotion});
     shown.current=visibleLines;
     fadeOut.current?.cancel();
     fadeOut.current=null;
@@ -163,6 +174,7 @@ export function LiveLyrics({
   return (
     <LyricPlayer
       ref={player}
+      lyricPlayer={window.companion?.debug?DebugLyricPlayer:undefined}
       className="lyric-player"
       lyricLines={visibleLines}
       currentTime={Math.round(Math.max(0,clock.at()+offset))}

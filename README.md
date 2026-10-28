@@ -16,6 +16,22 @@
 
 无需另外启动 UniLyric 或配置 WebSocket。本项目复用其引擎与部分歌词模块，不包含 UniLyric 完整 GUI。
 
+## 按需性能诊断（0.6.14）
+
+正常启动不采集性能数据。需要排查卡顿时，先退出已运行的程序，再在解压目录打开 PowerShell，执行：
+
+```powershell
+& '.\AMLL Companion.exe' --debug
+```
+
+诊断模式每次启动生成独立日志：`%LOCALAPPDATA%\AMLL Companion\Logs\debug-日期-时间-进程号.jsonl`。按 `Win + R` 输入 `%LOCALAPPDATA%\AMLL Companion\Logs` 即可打开。复现卡顿后退出程序，提供这次启动生成的日志；下次不带 `--debug` 启动即可恢复普通模式。程序采用单实例运行，向已运行实例追加参数不会开启诊断。
+
+日志每 5 秒汇总宿主和 WebView2 子进程的 CPU、工作集／私有内存、UI 调度延迟，以及前端帧率、超过 50 毫秒的帧间隔、最长的 10 个主线程长任务和可用时的 JS 堆大小。隐藏窗口的帧率不作为卡顿数据。CPU 的 100% 表示占满一个逻辑核心，首次进程采样尚无 CPU 差值时记为 `null`。
+
+同时记录歌词检索、加载、视图重建耗时、行数／词数、歌词来源请求耗时、前端异常和 WebView2 进程异常。诊断事件在后台写入，队列上限为 512 条，积压时丢弃最旧记录；不逐帧写磁盘。该模式不自动打开开发者工具，也不记录完整歌词或网络响应；异常信息可能含来源 URL。它提供定位卡顿的线索，不是 GPU 利用率或完整调用栈分析器。
+
+验证命令：`node --test tests/debug-diagnostics.test.mjs`、`node tests/debug-native.mjs`（需先编译原生宿主）和 `node tests/lyric-transition-headless.mjs`。
+
 ## 歌词来源与默认选择
 
 | 来源 | 当前接入能力 |

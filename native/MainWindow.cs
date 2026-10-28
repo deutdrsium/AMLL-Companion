@@ -18,6 +18,7 @@ internal sealed class MainWindow : Window
     private readonly SmtcService smtc;
     private readonly LyricsProviders lyrics = new();
     private readonly string[] args;
+    private readonly DebugDiagnostics? diagnostics;
     private bool ready, floating, fullscreen, closed;
     private Rect normalBounds = new(100, 100, 1280, 820);
     private Rect fullscreenBounds;
@@ -26,9 +27,10 @@ internal sealed class MainWindow : Window
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private const string Origin = "https://companion.local";
 
-    public MainWindow(string[] arguments)
+    public MainWindow(string[] arguments, DebugDiagnostics? debugDiagnostics = null)
     {
         args = arguments;
+        diagnostics = debugDiagnostics;
         Title = "AMLL Companion"; Width = 1280; Height = 820; MinWidth = 320; MinHeight = 200;
         Icon = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -58,6 +60,8 @@ internal sealed class MainWindow : Window
             var environment = await CoreWebView2Environment.CreateAsync(null, userFolder, options);
             await web.EnsureCoreWebView2Async(environment);
             var core = web.CoreWebView2;
+            diagnostics?.Attach(environment);
+            if (diagnostics is not null) core.ProcessFailed += (_, e) => diagnostics.Write("webview.process-failed", new { kind = e.ProcessFailedKind.ToString(), e.Reason, e.ExitCode });
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreDevToolsEnabled = args.Contains("--automation");
@@ -67,7 +71,7 @@ internal sealed class MainWindow : Window
             core.NewWindowRequested += (_, e) => e.Handled = true;
             core.PermissionRequested += (_, e) => e.State = CoreWebView2PermissionState.Deny;
             core.WebMessageReceived += OnMessage;
-            await core.AddScriptToExecuteOnDocumentCreatedAsync(BridgeScript);
+            await core.AddScriptToExecuteOnDocumentCreatedAsync(BridgeScript.Replace("__DEBUG__", diagnostics is not null ? "true" : "false"));
             core.Navigate(Origin + "/index.html");
             await smtc.StartAsync();
         }
@@ -79,12 +83,25 @@ internal sealed class MainWindow : Window
     {
         if (!e.Source.StartsWith(Origin + "/", StringComparison.Ordinal)) return;
         long id = 0;
+        var started = diagnostics is not null ? Stopwatch.GetTimestamp() : 0;
+        string? method = null, provider = null, operation = null;
+        var status = "ok";
         try
         {
             using var document = JsonDocument.Parse(e.WebMessageAsJson);
             var root = document.RootElement; id = root.GetProperty("id").GetInt64();
-            var method = root.GetProperty("method").GetString();
+            method = root.GetProperty("method").GetString();
             var value = root.GetProperty("value");
+            if (method == "debugLog") {
+                if (diagnostics is not null && value.GetRawText().Length <= 65536) diagnostics.Write("renderer", value.Clone());
+                return;
+            }
+            if (diagnostics is not null && method == "providerQuery") {
+                provider = value.GetProperty("provider").GetString();
+                operation = value.GetProperty("operation").GetString();
+            }
+            if (diagnostics is not null && method is "providerQuery" or "lyricsSearch")
+                diagnostics.Write("bridge.request.start", new { id, method, provider, operation });
             object? result = null;
             switch (method)
             {
@@ -107,7 +124,15 @@ internal sealed class MainWindow : Window
             }
             Post(new { type = "reply", id, result });
         }
-        catch (Exception ex) { Post(new { type = "reply", id, error = ex.Message }); }
+        catch (Exception ex) {
+            status = ex is OperationCanceledException ? "cancelled" : "error";
+            diagnostics?.Write("bridge.error", new { method, provider, operation, exception = ex.ToString() });
+            Post(new { type = "reply", id, error = ex.Message });
+        }
+        finally {
+            if (diagnostics is not null && method is "providerQuery" or "lyricsSearch")
+                diagnostics.Write("bridge.request.end", new { id, method, provider, operation, status, durationMs = Math.Round(Stopwatch.GetElapsedTime(started).TotalMilliseconds, 1) });
+        }
     }
 
     private object WindowSnapshot() => new { mode = fullscreen ? "fullscreen" : floating ? "floating" : "normal", topmost = Topmost, maximized = WindowState == WindowState.Maximized };
@@ -203,6 +228,8 @@ internal sealed class MainWindow : Window
         pending.set(id,{resolve,reject,timer}); chrome.webview.postMessage({id,method,value});
       });
       window.companion = Object.freeze({
+        debug: __DEBUG__,
+        diagnosticLog:value=>{if(__DEBUG__)chrome.webview.postMessage({id:0,method:'debugLog',value});},
         native: true, snapshot:()=>invoke('snapshot'), command:value=>invoke('command',value),
         lyricsSearch:title=>invoke('lyricsSearch',title),
         providerQuery:value=>invoke('providerQuery',value), cancelProvider:id=>invoke('providerCancel',id),

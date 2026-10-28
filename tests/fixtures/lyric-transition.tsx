@@ -6,6 +6,11 @@ import '../../src/style.css';
 import {LiveLyrics} from '../../src/Playback';
 import {PlaybackClock} from '../../shared/clock.mjs';
 
+const diagnosticEvents:unknown[]=[];
+if(new URLSearchParams(location.search).has('debug'))Object.assign(window,{
+ diagnosticEvents,companion:{debug:true,diagnosticLog:(event:unknown)=>diagnosticEvents.push(event)},
+});
+
 const clock=new PlaybackClock();
 clock.duration=180000;clock.base=65000;
 let core:LyricPlayer;

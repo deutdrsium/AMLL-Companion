@@ -1,5 +1,6 @@
 import { parseTTML, parseLrc } from "@applemusic-like-lyrics/lyric";
 import type { Song, Music } from "./types";
+import type {LyricLine} from '@applemusic-like-lyrics/core';
 import { findLyrics } from "../shared/lyrics-search.mjs";
 import { searchLrclib } from "../shared/lrclib.mjs";
 import { searchProvider, getProviderLyrics, canAutoSelect, catalogueProviders, providerRequest } from '../shared/provider-lyrics.mjs';
@@ -10,6 +11,7 @@ import {searchProgressively} from '../shared/lyrics-pipeline.mjs';
 import {memoizeSearchRequest} from '../shared/search-work.mjs';
 import {lrclibRows} from '../shared/lyrics-http.mjs';
 import {cleanLyricLines} from '../shared/lyric-metadata.mjs';
+import {debugSpan} from '../shared/debug-diagnostics.mjs';
 export type SearchResult={items:Song[];match:Song|null;warning?:string};
 const base = "https://api.amll.dev/v1/lyrics";
 const cache = new Map<number | string, Song>();
@@ -40,7 +42,9 @@ export async function searchLyrics(
 ): Promise<{ items: Song[]; match: Song | null; warning?: string }> {
   const native=memoizeSearchRequest(providerRequest),amll=memoizeSearchRequest(request),load=memoizeSearchRequest(getLyrics);
   const rows=memoizeSearchRequest((title:string,s:AbortSignal)=>lrclibRows(title,s));
-  return searchProgressively(music,signal,{
+  const end=debugSpan('lyrics.search',{musicId:music.musicId});
+  try {
+  const result=await searchProgressively(music,signal,{
     metadata:(track:Music,s:AbortSignal,update:(result:{music:Music;message:string})=>void)=>options.manual
       ?Promise.resolve({music:track,message:'已使用手动纠正的检索信息'})
       :resolveMetadata(track,s,{onUpdate:update}),
@@ -66,11 +70,18 @@ export async function searchLyrics(
     ],
     web:searchWebLyrics,
   });
+  end({status:'ok',candidates:result.items.length,selectedId:result.match?.id??null});
+  return result;
+  }catch(error){end({status:signal.aborted?'cancelled':'error',message:String(error)});throw error;}
 }
 export async function getLyrics(song: Song, signal: AbortSignal) {
+  const end=debugSpan('lyrics.load',{id:song.id,source:song.source});
+  try {
   const result=await loadLyrics(song,signal);
   const lines=cleanLyricLines(result.lines,song);
+  if(window.companion?.debug)end({status:'ok',lines:lines.length,words:lines.reduce((sum:number,line:LyricLine)=>sum+line.words.length,0)});
   return lines===result.lines?result:{...result,rawLines:('rawLines' in result?result.rawLines:undefined)||result.lines,lines};
+  }catch(error){end({status:signal.aborted?'cancelled':'error',message:String(error)});throw error;}
 }
 async function loadLyrics(song: Song, signal: AbortSignal) {
   signal.throwIfAborted();

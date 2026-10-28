@@ -8,10 +8,11 @@ const server=await preview({build:{outDir},preview:{host:'127.0.0.1',port:5193,s
 let browser;
 try{
  browser=await chromium.launch({channel:'chrome',headless:true});
+ for(const enabled of [false,true]){
  const page=await browser.newPage({viewport:{width:1200,height:850}}),errors=[];
  page.setDefaultTimeout(10000);
  page.on('pageerror',error=>errors.push(error.message));
- await page.goto('http://127.0.0.1:5193/tests/fixtures/lyric-transition.html',{waitUntil:'domcontentloaded'});
+ await page.goto(`http://127.0.0.1:5193/tests/fixtures/lyric-transition.html${enabled?'?debug':''}`,{waitUntil:'domcontentloaded'});
  const waitFor=version=>page.waitForFunction(v=>window.transitionTest?.current().first===`${v} line 0`,version);
  const settled=()=>page.waitForFunction(()=>document.querySelector('.lyric-player')?.getAnimations().every(a=>a.playState==='finished'));
  await waitFor('original');
@@ -40,6 +41,14 @@ try{
  await page.waitForTimeout(400);
  assert.equal(await page.locator('.lyric-player').count(),0);
  assert.deepEqual(errors,[]);
- console.log('PASS lyric transition: fade, current position, playback, offset, superseded updates, reduced motion, translation and unmount');
+ if(enabled){
+  const events=await page.evaluate(()=>window.diagnosticEvents);
+  assert.ok(events.some(e=>e.event==='lyrics.rebuild.start'));
+  assert.ok(events.some(e=>e.event==='lyrics.rebuild.end'&&e.data.durationMs>=0));
+  assert.ok(events.some(e=>e.event==='lyrics.render'));
+ }
+ console.log(`PASS lyric transition (${enabled?'debug':'normal'}): fade, current position, playback, offset, superseded updates, reduced motion, translation and unmount`);
+ await page.close();
+ }
 }catch(error){console.error(error);throw error;}
 finally{await browser?.close();await new Promise(resolve=>server.httpServer.close(resolve));}

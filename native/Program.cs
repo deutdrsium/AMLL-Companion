@@ -11,9 +11,10 @@ internal static class Program
         if (args.Contains("--self-test")) return ClockTests.Run();
         using var singleInstance = new Mutex(true, args.Contains("--automation") ? "Local\\AMLLCompanion.Automation" : "Local\\AMLLCompanion.Native", out var created);
         if (!created) return 0;
+        using var diagnostics = args.Contains("--debug") ? new DebugDiagnostics() : null;
         var app = new Application();
-        app.DispatcherUnhandledException += (_, e) => { WriteError(e.Exception); MessageBox.Show(e.Exception.Message, "AMLL Companion"); e.Handled = true; };
-        return app.Run(new MainWindow(args));
+        app.DispatcherUnhandledException += (_, e) => { diagnostics?.Write("native.error", new { exception = e.Exception.ToString() }); WriteError(e.Exception); MessageBox.Show(e.Exception.Message, "AMLL Companion"); e.Handled = true; };
+        return app.Run(new MainWindow(args, diagnostics));
     }
     public static void WriteError(Exception ex)
     {
