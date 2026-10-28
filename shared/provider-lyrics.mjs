@@ -3,6 +3,9 @@ import { lyricQuality, resolveBest } from './lyrics-quality.mjs';
 
 export const providerNames = { kugou: '酷狗音乐', netease: '网易云音乐', qq: 'QQ 音乐', kuwo: '酷我音乐', migu: '咪咕音乐', web: '网页 LRC', lrclib: 'LRCLIB', amll: 'AMLL' };
 export const catalogueProviders = ['netease', 'kugou', 'qq', 'kuwo', 'migu'];
+const recordingOrder=music=>(a,b)=>Number(normalize(b.albumNames[0])===normalize(music.albumName))
+  -Number(normalize(a.albumNames[0])===normalize(music.albumName))
+  ||Math.abs((a.duration||0)-music.duration)-Math.abs((b.duration||0)-music.duration);
 const decode = s => String(s || '').replace(/&(?:nbsp|amp|quot|apos|lt|gt);|&#(?:x[0-9a-f]+|\d+);/gi, entity => {
   if (entity[1] !== '#') return ({'&nbsp;':' ', '&amp;':'&', '&quot;':'"', '&apos;':"'", '&lt;':'<', '&gt;':'>'})[entity.toLowerCase()];
   const n = entity[2].toLowerCase() === 'x' ? parseInt(entity.slice(3),16) : parseInt(entity.slice(2),10);
@@ -28,9 +31,7 @@ export function compatibleSongs(rows, provider, music) {
       musicNames: [decode(row.title)], artistNames: row.artists.map(a => a.name).filter(n => typeof n === 'string').map(decode),
       albumNames: [decode(row.album)], duration: row.duration }))
     .filter(song => bestMatch([song], music))
-    .sort((a,b) => Number(normalize(b.albumNames[0]) === normalize(music.albumName))
-      - Number(normalize(a.albumNames[0]) === normalize(music.albumName))
-      || Math.abs((a.duration || 0)-music.duration)-Math.abs((b.duration || 0)-music.duration));
+    .sort(recordingOrder(music));
 }
 export function canAutoSelect(song, music) {
   const version = text => (text.match(/live|remix|acoustic|instrumental|演唱会|现场|伴奏/gi) || []).map(s=>s.toLowerCase()).sort().join();
@@ -61,13 +62,19 @@ export function hasLyricContent(lines, song) {
   });
 }
 export async function searchProvider(provider, music, signal, request = providerRequest) {
-  let items = [];
-  search: for (const title of musicTitles(music)) for (const artists of artistQueries(music)) {
-    const rows = await request(provider, 'search', { title, artists: artists.map(simplify),
-      album: music.albumName || null, duration: music.duration || null }, signal);
-    items = compatibleSongs(rows, provider, music);
-    if (items.length) break search;
+  const found=new Map(),seen=new Set();let succeeded=false,failure;
+  for (const title of musicTitles(music)) for (const artists of artistQueries(music)) {
+    signal.throwIfAborted();
+    const data={title,artists:artists.map(simplify),album:music.albumName||null,duration:music.duration||null};
+    const key=JSON.stringify([title.normalize('NFKC').toLowerCase(),data.artists.map(a=>a.normalize('NFKC').toLowerCase())]);
+    if(seen.has(key))continue;seen.add(key);
+    try{
+      const rows=await request(provider,'search',data,signal);succeeded=true;
+      for(const song of compatibleSongs(rows,provider,music))found.set(song.id,song);
+    }catch(error){signal.throwIfAborted();failure=error;}
   }
+  if(!succeeded&&failure)throw failure;
+  const items=[...found.values()].sort(recordingOrder(music));
   const match = await resolveBest(items.filter(s => canAutoSelect(s, music)),
     (song, signal) => getProviderLyrics(song, signal, request), signal);
   return { items, match };

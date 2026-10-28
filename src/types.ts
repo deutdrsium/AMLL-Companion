@@ -6,6 +6,9 @@ export interface Music {
   duration: number;
   titleAliases?: string[];
   artistAliases?: string[];
+  metadataReleaseRegion?: string;
+  metadataReleaseCountries?: string[];
+  metadataReleaseLocale?: string;
 }
 export interface Capabilities {
   play: boolean;

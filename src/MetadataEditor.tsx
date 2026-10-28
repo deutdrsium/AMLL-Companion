@@ -14,6 +14,8 @@ export function MetadataEditor({raw,music,message,saved,onSave,onClear}:{
     <summary>纠正歌名与歌手</summary>
     <p className="hint">播放器信息：{raw.musicName} · {raw.artists.join(' / ')}</p>
     {message&&<p className="hint" aria-live="polite">{message}</p>}
+    {!!music.titleAliases?.length&&<p className="hint">检索歌名：{[music.musicName,...music.titleAliases].join(' / ')}</p>}
+    {!!music.artistAliases?.length&&<p className="hint">检索歌手：{[...music.artists,...music.artistAliases].join(' / ')}</p>}
     <form onSubmit={event=>{event.preventDefault();try{
       onSave({musicName:title.trim(),artists:artists.split(/[;；]/).map(a=>a.trim()).filter(Boolean)});
       setDirty(false);setNotice('已保存，正在重新检索歌词');

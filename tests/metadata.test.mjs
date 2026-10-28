@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {metadataFromRecording,resolveMetadata,createMetadataLookup,saveCorrection,readCorrections,correctedMusic} from '../shared/metadata.mjs';
+import {metadataFromRecording,resolveMetadata,createMetadataLookup,saveCorrection,readCorrections,correctedMusic,releaseRegion} from '../shared/metadata.mjs';
+import {catalogueIdentity,resolveCatalogueAliases} from '../shared/catalogue-metadata.mjs';
 import {bestMatch} from '../shared/matching.mjs';
 import {findLyrics} from '../shared/lyrics-search.mjs';
 import {searchProvider} from '../shared/provider-lyrics.mjs';
@@ -107,4 +108,62 @@ test('web LRC identity validation recognizes verified title and artist aliases',
  const resolved={...music,musicName:'Romanized Song',titleAliases:['原文の歌名'],artistAliases:['一二三']};
  assert.ok(webSong(lyrics,'',resolved,'https://example.org/test.lrc'));
  assert.equal(webSong(lyrics.replace('[ar:一二三]','[ar:Other Artist]'),'',resolved,'https://example.org/test.lrc'),null);
+});
+
+const spica={...music,musicName:'Spica',artists:['上白石萌音'],albumName:'kibi',duration:316240};
+const appleJP={kind:'song',trackId:1775580978,artistId:968420440,collectionId:1775580587,trackName:'スピカ',artistName:'上白石萌音',collectionName:'kibi',trackTimeMillis:316240,country:'JPN'};
+const appleUS={...appleJP,trackName:'Spica',artistName:'Mone Kamishiraishi',collectionName:'Kibi',country:'USA'};
+test('Apple regional names require the same track, artist and album IDs, not merely a similar duration',()=>{
+ const result=catalogueIdentity([appleJP,appleUS],spica);
+ assert.equal(result.musicName,'スピカ');assert.ok(result.titleAliases.includes('Spica'));
+ assert.ok(result.artistAliases.includes('Mone Kamishiraishi'));
+ assert.equal(result.metadataReleaseRegion,undefined);
+ assert.equal(catalogueIdentity([appleJP,{...appleUS,trackId:99}],spica),null);
+ assert.equal(catalogueIdentity([appleJP,{...appleUS,artistId:99}],spica),null);
+ assert.equal(catalogueIdentity([appleJP,appleUS],{...spica,artists:['Other']}),null);
+ assert.equal(catalogueIdentity([appleJP,appleUS],{...spica,artists:['上白石萌音','Other']}),null);
+ assert.equal(catalogueIdentity([appleJP,appleUS],{...spica,duration:100000}),null);
+ assert.equal(catalogueIdentity([appleJP,appleUS],{...spica,duration:0,albumName:'Other'}),null);
+});
+test('release language wins over the current script, without substituting an artist nationality for release evidence',()=>{
+ const regional={...record,title:'English Title',aliases:[{name:'原文曲名',locale:'ja',primary:true}],
+  releases:[{title:music.albumName,status:'Official',country:'JP',date:'2024-01-01','text-representation':{language:'jpn'}},
+   {title:music.albumName,status:'Pseudo-Release',country:'US',date:'2023-01-01'}]};
+ const result=metadataFromRecording(regional,{...music,musicName:'English Title'});
+ assert.equal(result.musicName,'原文曲名');assert.equal(result.metadataReleaseRegion,'JP');
+ assert.equal(result.metadataRegionBasis,'matched-release');
+ const worldwide=releaseRegion({...regional,releases:[{title:music.albumName,country:'XW'}]},music);
+ assert.equal(worldwide.metadataReleaseRegion,'');assert.equal(worldwide.metadataReleaseLocale,'');
+ const uncertain=releaseRegion({...regional,releases:[{title:music.albumName,country:'CA'},{title:music.albumName,country:'FR'}]},music);
+ assert.equal(uncertain.metadataReleaseRegion,'');
+});
+test('Spica is automatically corrected and rechecked against the local recording before caching release evidence',async()=>{
+ const original={...record,title:'スピカ',length:316240,aliases:[],releases:[{title:'kibi',country:'JP',status:'Official','text-representation':{language:'jpn'}}],
+  'artist-credit':[{name:'上白石萌音',artist:{id:artistId,name:'上白石萌音',aliases:[{name:'Mone Kamishiraishi',locale:'en',primary:true}]}}]};
+ const store=storage();
+ const lookup=async url=>{
+  const query=new URL(url).searchParams.get('query');
+  return query?{recordings:query.includes('スピカ')?[original]:[]}:original;
+ };
+ const catalogueLookup=async url=>new URL(url).pathname==='/search'?{results:[appleJP]}:{results:[appleUS]};
+ const result=await resolveMetadata(spica,signal(),{storage:store,lookup,catalogueLookup});
+ assert.equal(result.music.musicName,'スピカ');assert.equal(result.music.metadataReleaseRegion,'JP');
+ assert.ok(result.music.titleAliases.includes('Spica'));assert.equal(result.music.metadataAppleTrackId,1775580978);
+ const cached=await resolveMetadata(spica,signal(),{storage:store,lookup:()=>{throw Error('cache missed');}});
+ assert.equal(cached.music.metadataReleaseRegion,'JP');
+ const controller=new AbortController();controller.abort();
+ await assert.rejects(resolveCatalogueAliases(spica,controller.signal,catalogueLookup),{name:'AbortError'});
+});
+test('every confirmed title and artist name is queried and later query failures preserve earlier lyrics',async()=>{
+ const track={...music,titleAliases:['Title 2','Title 3','Title 4','Title 5'],artistAliases:['Alias 1','Alias 2','Alias 3','Alias 4']};
+ const queries=[];
+ const result=await searchProvider('netease',track,signal(),async(_,operation,data)=>{
+  if(operation==='search'){
+   queries.push([data.title,...data.artists]);
+   if(data.title==='Title 5')throw Error('503');
+   return [{provider_name:'netease',provider_id:'valid',title:music.musicName,artists:[{name:'hifumi'}],album:music.albumName,duration:music.duration}];
+  }
+  return {lines:[1,2].map(i=>({startTime:i*1000,endTime:i*1000+500,words:[{word:'Sung lyric',startTime:i*1000,endTime:i*1000+500}]}))};
+ });
+ assert.equal(queries.length,25);assert.ok(queries.some(q=>q.includes('Alias 4')));assert.ok(result.match);
 });

@@ -15,7 +15,7 @@ export function artistNames(artists) {
 }
 export const musicArtists=music=>[...new Set([...music.artists,...(music.artistAliases||[])])];
 export const musicTitles=music=>[...new Set([music.musicName,...(music.titleAliases||[])].flatMap(t=>[t,simplify(t),titleWithoutCredits(t),simplify(titleWithoutCredits(t))]))].filter(Boolean);
-export const artistQueries=music=>[...new Map([music.artists,...(music.artistAliases||[]).map(a=>[a])].map(a=>[JSON.stringify(a.map(n=>n.normalize('NFKC').toLocaleLowerCase())),a])).values()].slice(0,3);
+export const artistQueries=music=>[...new Map([music.artists,...(music.artistAliases||[]).map(a=>[a])].map(a=>[JSON.stringify(a.map(n=>n.normalize('NFKC').toLocaleLowerCase())),a])).values()];
 export function bestMatch(items, music) {
   const exact = items.filter(
     (item) =>

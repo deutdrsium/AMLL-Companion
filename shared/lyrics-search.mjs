@@ -4,10 +4,11 @@ export async function findLyrics(music, request, signal) {
   const items = new Map();
   const seen = new Set();
   const titles = musicTitles(music);
-  const artists = [...new Set([...artistNames(music.artists),...artistNames(music.artistAliases||[]).slice(0,3)].flatMap(a => [a, simplify(a)]))];
+  const artists = [...new Set([...artistNames(music.artists),...artistNames(music.artistAliases||[])].flatMap(a => [a, simplify(a)]))];
   const queries = titles.flatMap(musicName => [
     ...artists.map(artistName => ({ musicName, artistName })), { musicName },
   ]);
+  let succeeded=false, failure;
   for (const query of queries) {
     const key = JSON.stringify(query);
     if (seen.has(key)) continue;
@@ -15,7 +16,9 @@ export async function findLyrics(music, request, signal) {
     let page = 1;
     while (true) {
       signal.throwIfAborted();
-      const result = await request("search", { ...query, pageSize: "100", page: String(page) }, signal);
+      let result;
+      try{result=await request("search", { ...query, pageSize: "100", page: String(page) }, signal);succeeded=true;}
+      catch(error){signal.throwIfAborted();failure=error;break;}
       for (const item of Array.isArray(result.items) ? result.items : []) {
         if (Number.isSafeInteger(item.id) && [item.musicNames, item.artistNames, item.albumNames]
           .every(a => Array.isArray(a) && a.every(v => typeof v === "string"))) items.set(item.id, item);
@@ -31,5 +34,6 @@ export async function findLyrics(music, request, signal) {
     }
   }
   const all = [...items.values()];
+  if(!succeeded&&failure)throw failure;
   return { items: all, match: bestMatch(all, music) };
 }

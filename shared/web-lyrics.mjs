@@ -91,8 +91,8 @@ export async function searchWebLyrics(music, signal, request = providerRequest) 
   if (!music.artists?.length) return { items: [], match: null };
   const key = JSON.stringify([music.musicName, music.artists, music.albumName, music.duration, music.titleAliases, music.artistAliases]);
   if (cache.has(key)) return cache.get(key);
-  const queries=[...new Map([...artistQueries(music).map(artists=>({title:music.musicName,artist:artists.join(' ')})),
-    ...musicTitles(music).map(title=>({title,artist:music.artists.join(' ')}))].map(q=>[JSON.stringify(q),q])).values()].slice(0,4);
+  const queries=[...new Map(musicTitles(music).flatMap(title=>artistQueries(music).map(artists=>({title,artist:artists.join(' ')})))
+    .map(q=>[JSON.stringify(q),q])).values()];
   let failures = 0;
   const visited=new Set();
   for(const query of queries){
