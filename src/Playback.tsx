@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   LyricPlayer,
   type LyricPlayerRef,
@@ -7,10 +7,13 @@ import { LyricPlayer as CoreLyricPlayer, type LyricLine } from "@applemusic-like
 import { PlaybackClock } from "../shared/clock.mjs";
 import {debugEvent,debugSpan} from '../shared/debug-diagnostics.mjs';
 
-class DebugLyricPlayer extends CoreLyricPlayer {
+class PlaybackLyricPlayer extends CoreLyricPlayer {
+  readTime?:()=>number;
   override setLyricLines(lines:LyricLine[],initialTime=0){
-    const end=debugSpan('lyrics.rebuild',{lines:lines.length,words:lines.reduce((sum,line)=>sum+line.words.length,0),initialTime});
-    try{super.setLyricLines(lines,initialTime);}finally{end();}
+    const position=this.readTime?.()??initialTime;
+    const end=window.companion?.debug?debugSpan('lyrics.rebuild',{lines:lines.length,
+      words:lines.reduce((sum,line)=>sum+line.words.length,0),initialTime:position}):null;
+    try{super.setLyricLines(lines,position);}finally{end?.();}
   }
 }
 
@@ -124,38 +127,58 @@ export function LiveLyrics({
   showRomanization: boolean;
 }) {
   const player = useRef<LyricPlayerRef>(null);
+  const position=useRef<()=>number>(()=>0);
+  position.current=()=>Math.round(Math.max(0,clock.at()+offset));
+  const attachPlayer=useCallback((handle:LyricPlayerRef|null)=>{
+    player.current=handle;
+    if(handle?.lyricPlayer instanceof PlaybackLyricPlayer)handle.lyricPlayer.readTime=()=>position.current();
+  },[]);
   const displayLines = useMemo(() => lines.map(line => ({ ...line,
     translatedLyric: showTranslation ? line.translatedLyric : '',
     romanLyric: showRomanization ? line.romanLyric : '',
   })), [lines, showTranslation, showRomanization]);
   const [visibleLines,setVisibleLines]=useState(displayLines);
   const shown=useRef(displayLines),fadeOut=useRef<Animation|null>(null);
+  const cancelReveal=useRef(()=>{});
   useEffect(()=>{
     if(shown.current===displayLines)return;
     const element=player.current?.wrapperEl;
-    if(reduceMotion||!element){setVisibleLines(displayLines);return;}
+    const opacity=element?getComputedStyle(element).opacity:'0';
+    cancelReveal.current();
+    if(reduceMotion||!element||Number(opacity)===0){
+      if(element)element.style.opacity='0';
+      setVisibleLines(displayLines);return;
+    }
     let cancelled=false;
-    const animation=element.animate([{opacity:getComputedStyle(element).opacity},{opacity:0}],{duration:120,easing:'ease-in',fill:'forwards'});
+    const animation=element.animate([{opacity},{opacity:0}],{duration:120,easing:'ease-in',fill:'forwards'});
     fadeOut.current=animation;
-    void animation.finished.then(()=>{if(!cancelled)setVisibleLines(displayLines);},()=>{});
+    void animation.finished.then(()=>{if(!cancelled){element.style.opacity='0';setVisibleLines(displayLines);}},()=>{});
     return ()=>{cancelled=true;animation.cancel();};
   },[displayLines,reduceMotion]);
   useLayoutEffect(()=>{
-    // Rebuild at the live clock position while hidden, before the next paint.
-    const core=player.current?.lyricPlayer;
-    core?.setCurrentTime(Math.round(Math.max(0,clock.at()+offset)),true);
-    core?.update(0);
-    if(shown.current===visibleLines)return;
+    const core=player.current?.lyricPlayer,element=player.current?.wrapperEl;
+    if(!core||!element)return;
+    if(shown.current===visibleLines&&element.style.opacity!=='0')return;
+    // Measure new rows while hidden and snap their springs before revealing them.
+    element.style.opacity='0';core.setEnableSpring(false);
+    const sync=()=>{core.setCurrentTime(position.current(),true);core.update(0);};
+    sync();
     if(window.companion?.debug)debugEvent('lyrics.render',{lines:visibleLines.length,
       words:visibleLines.reduce((sum,line)=>sum+line.words.length,0),
       positionMs:Math.round(clock.at()+offset),reduceMotion});
     shown.current=visibleLines;
-    fadeOut.current?.cancel();
-    fadeOut.current=null;
-    if(reduceMotion)return;
-    const animation=player.current?.wrapperEl?.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'});
-    return ()=>animation?.cancel();
-  },[visibleLines,clock,offset,reduceMotion]);
+    let frame=0,animation:Animation|undefined;
+    const reveal=()=>{
+      sync();core.setEnableSpring(!reduceMotion);core.update(0);
+      fadeOut.current?.cancel();fadeOut.current=null;element.style.opacity='';
+      if(!reduceMotion)animation=element.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'});
+    };
+    if(reduceMotion)reveal();
+    else frame=requestAnimationFrame(()=>{sync();frame=requestAnimationFrame(reveal);});
+    const cancel=()=>{cancelAnimationFrame(frame);animation?.cancel();};
+    cancelReveal.current=cancel;
+    return cancel;
+  },[visibleLines,reduceMotion]);
   useEffect(() => {
     let frame = 0,
       revision = -1;
@@ -173,8 +196,8 @@ export function LiveLyrics({
   }, [clock, offset]);
   return (
     <LyricPlayer
-      ref={player}
-      lyricPlayer={window.companion?.debug?DebugLyricPlayer:undefined}
+      ref={attachPlayer}
+      lyricPlayer={PlaybackLyricPlayer}
       className="lyric-player"
       lyricLines={visibleLines}
       currentTime={Math.round(Math.max(0,clock.at()+offset))}

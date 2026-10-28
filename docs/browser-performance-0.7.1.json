@@ -1,0 +1,17 @@
+{
+  "scenario": "80 matching candidates / 55 word-timed lines / 1280x820 / DPR 1.5 / no album background",
+  "getCalls": 80,
+  "frames": 1982,
+  "durationMs": 14083,
+  "fps": 140.7,
+  "maxFrameMs": 55.6,
+  "p95FrameMs": 7.1,
+  "search": {
+    "musicId": "performance",
+    "status": "ok",
+    "candidates": 80,
+    "selectedId": "netease:0",
+    "durationMs": 13225.7
+  },
+  "selected": "网易云音乐 · 逐词同步"
+}

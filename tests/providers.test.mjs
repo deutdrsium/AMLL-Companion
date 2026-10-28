@@ -37,3 +37,27 @@ test('track change cancels native work and rejects stale results',async()=>{
  const pending=providerRequest('netease','search',{},c.signal,{providerQuery:()=>new Promise(r=>resolve=r),cancelProvider:async()=>{canceled=true;}});
  c.abort();resolve([]);await assert.rejects(pending,{name:'AbortError'});assert.equal(canceled,true);
 });
+
+test('malformed catalogue rows do not discard valid results; malformed payloads remain errors',async()=>{
+ const rows=[null,{}, {...row,provider_id:''}, {...row,artists:[null,{name:'周杰伦'}]}];
+ assert.equal(compatibleSongs(rows,'netease',music).length,1);
+ await assert.rejects(searchProvider('netease',music,new AbortController().signal,async()=>({error:'bad payload'})),/无效搜索结果/);
+});
+
+test('loaded catalogue versions are reused across aliases and the final comparison',async()=>{
+ let reads=0;const lineData={...data,lines:data.lines.map(line=>({...line,words:line.words.map(word=>({...word}))}))};
+ for(const line of lineData.lines){const words=line.words;Object.defineProperty(line,'words',{get(){reads++;return words;}});}
+ const track={...music,titleAliases:['七里香别名']};let firstReads=0,emitted=0;
+ const result=await searchProvider('netease',track,new AbortController().signal,async(_p,op)=>op==='search'?[row]:lineData,
+  update=>{if(update.match&&++emitted===1)firstReads=reads;});
+ assert.ok(result.match);assert.ok(emitted>=2);
+ assert.equal(reads,firstReads,'Final comparison must reuse the parsed candidate and its score');
+});
+
+test('negative and reversed word times are rejected before reaching the lyric renderer',async()=>{
+ for(const changes of [{startTime:-1,endTime:2000},{startTime:1800,endTime:1500}]){
+  const lines=data.lines.map(line=>({...line,words:line.words.map(word=>({...word}))}));
+  Object.assign(lines[0].words[0],changes);
+  await assert.rejects(getProviderLyrics({source:'netease'},new AbortController().signal,async()=>({lines})),/没有同步歌词/);
+ }
+});

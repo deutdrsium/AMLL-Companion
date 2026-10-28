@@ -27,6 +27,7 @@ import {
   PinOff,
 } from "lucide-react";
 import { getLyrics, searchLyrics } from "./lyrics";
+import {version} from '../package.json';
 import { lyricDetails,compareLyrics } from '../shared/lyrics-quality.mjs';
 import { providerNames } from '../shared/provider-lyrics.mjs';
 import {cleanLyricLines} from '../shared/lyric-metadata.mjs';
@@ -256,7 +257,7 @@ export default function App() {
       let displayed:Song|null=null;
       const display=(song:Song)=>{
         if(!song.resolvedLyrics)return;
-        displayed=song;const result=song.resolvedLyrics;
+        const result=song.resolvedLyrics;displayed={...song,resolvedLyrics:result};
         setLines(cleanLyricLines(result.lines,song));setSelectedSongId(song.id);setAuthors(result.authors);
         setLyricSource(result.source);setLyricStatus('逐词歌词');
       };
@@ -271,7 +272,7 @@ export default function App() {
           onProgress:result=>{
             if(controller.signal.aborted)return;
             updateCandidates(result.items);
-            if(!displayed&&result.match)display(result.match);
+            if(result.match&&(!displayed||compareLyrics(result.match,displayed)<0))display(result.match);
           },
         });
         if (controller.signal.aborted) return;
@@ -283,7 +284,7 @@ export default function App() {
           );
           return;
         }
-        // Keep the first usable result stable; upgrade at most once after quality comparison finishes.
+        // The final comparison can add translations or duet annotations to a preview.
         if(!displayed||compareLyrics(match,displayed)<0){
           match.resolvedLyrics=await getLyrics(match,controller.signal);
           if(!controller.signal.aborted)display(match);
@@ -327,8 +328,6 @@ export default function App() {
     const controller = new AbortController();
     activeRequest.current = controller;
     setPicker(false);
-    setLines([]);
-    setSelectedSongId(null);
     setLyricStatus("正在加载歌词…");
     try {
       const result = await getLyrics(song, controller.signal);
@@ -342,8 +341,10 @@ export default function App() {
         setLyricStatus("逐词歌词");
       }
     } catch (e) {
-      if (!controller.signal.aborted)
-        setLyricStatus(e instanceof Error ? e.message : "歌词加载失败");
+      if (!controller.signal.aborted){
+        const message=e instanceof Error ? e.message : "歌词加载失败";
+        setLyricStatus(message);setError(message);
+      }
     }
   }
   async function command(value: Command) {
@@ -444,7 +445,7 @@ export default function App() {
         }}
       >
         <span className="brand">
-          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion 0.6.14</span>
+          <Music2 size={18} fill="currentColor" /> AMLL <span>Companion {version}</span>
         </span>
         {!mini && <div className="top-actions">
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>

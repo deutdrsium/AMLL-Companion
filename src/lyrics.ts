@@ -3,7 +3,7 @@ import type { Song, Music } from "./types";
 import type {LyricLine} from '@applemusic-like-lyrics/core';
 import { findLyrics } from "../shared/lyrics-search.mjs";
 import { searchLrclib } from "../shared/lrclib.mjs";
-import { searchProvider, getProviderLyrics, canAutoSelect, catalogueProviders, providerRequest } from '../shared/provider-lyrics.mjs';
+import { searchProvider, getProviderLyrics, validLyricLines, canAutoSelect, catalogueProviders, providerRequest } from '../shared/provider-lyrics.mjs';
 import { searchWebLyrics } from '../shared/web-lyrics.mjs';
 import { lyricQuality, resolveBest, amllCandidates } from '../shared/lyrics-quality.mjs';
 import {resolveMetadata} from '../shared/metadata.mjs';
@@ -78,6 +78,7 @@ export async function getLyrics(song: Song, signal: AbortSignal) {
   const end=debugSpan('lyrics.load',{id:song.id,source:song.source});
   try {
   const result=await loadLyrics(song,signal);
+  if(!validLyricLines(result.lines))throw Error('歌词含有无效时间戳，无法显示此版本');
   const lines=cleanLyricLines(result.lines,song);
   if(window.companion?.debug)end({status:'ok',lines:lines.length,words:lines.reduce((sum:number,line:LyricLine)=>sum+line.words.length,0)});
   return lines===result.lines?result:{...result,rawLines:('rawLines' in result?result.rawLines:undefined)||result.lines,lines};

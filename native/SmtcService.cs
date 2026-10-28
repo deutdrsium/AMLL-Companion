@@ -15,6 +15,7 @@ internal record PlayerState(bool Connected, string Error, Music? Music, string C
 internal sealed class SmtcService(Dispatcher dispatcher) : IDisposable
 {
     private Process? bridge;
+    private readonly SemaphoreSlim commandLock = new(1, 1);
     private readonly PlaybackClock clock = new();
     private Music? music;
     private string cover = "", error = "", selection = "auto", selected = "", source = "";
@@ -157,9 +158,12 @@ internal sealed class SmtcService(Dispatcher dispatcher) : IDisposable
     }
     private async Task SendAsync(object value)
     {
-        if (bridge is null || bridge.HasExited) throw new InvalidOperationException("UniLyric 引擎未运行");
-        await bridge.StandardInput.WriteLineAsync(JsonSerializer.Serialize(value));
-        await bridge.StandardInput.FlushAsync();
+        await commandLock.WaitAsync();
+        try {
+            if (disposed || bridge is null || bridge.HasExited) throw new InvalidOperationException("UniLyric 引擎未运行");
+            await bridge.StandardInput.WriteLineAsync(JsonSerializer.Serialize(value));
+            await bridge.StandardInput.FlushAsync();
+        } finally { commandLock.Release(); }
     }
     public async Task CommandAsync(string command, JsonElement value)
     {

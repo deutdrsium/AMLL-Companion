@@ -212,6 +212,9 @@ try {
   );
   await page.getByRole("button", { name: "播放", exact: true }).click();
   await page.getByRole("button", { name: "暂停", exact: true }).waitFor();
+  await page.evaluate(()=>Promise.all(Array.from({length:20},(_,i)=>window.companion.command({command:i%2?'resume':'pause'}))));
+  await waitState(state=>state.playing);
+  console.log('Concurrent bridge commands serialized without StreamWriter failures.');
   fixture.stdin.write("seek:12000\n");
   await page.waitForFunction(
     () =>

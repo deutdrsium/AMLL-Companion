@@ -1,4 +1,4 @@
-import {compareLyrics,supplementLyrics} from './lyrics-quality.mjs';
+import {compareLyrics,lyricTiming,supplementLyrics} from './lyrics-quality.mjs';
 import {musicTitles,musicArtists} from './matching.mjs';
 
 export async function searchProgressively(music,signal,{metadata,sources,web,onMetadata,onProgress,canPreview=()=>true}){
@@ -9,7 +9,8 @@ export async function searchProgressively(music,signal,{metadata,sources,web,onM
     signal.throwIfAborted();
     for(const song of result.items||[]){const old=items.get(song.id);items.set(song.id,old?.resolvedLyrics&&!song.resolvedLyrics?old:song);}
     if(result.match){items.set(result.match.id,result.match);matches.set(result.match.id,result.match);}
-    onProgress?.({...snapshot(),match:[...matches.values()].filter(song=>canPreview(song,current)).sort(compareLyrics)[0]||null});
+    if(onProgress)onProgress({items:[...items.values()].sort(compareLyrics),
+      match:[...matches.values()].filter(song=>canPreview(song,current)).sort(compareLyrics)[0]||null});
   };
   const start=track=>{
     signal.throwIfAborted();
@@ -33,7 +34,18 @@ export async function searchProgressively(music,signal,{metadata,sources,web,onM
   signal.throwIfAborted();
   // Expanded metadata is authoritative; an earlier provisional match cannot bypass its ambiguity check.
   const eligible=[...new Map((await waves.at(-1)).flatMap(r=>r?.eligible??(r?.match?[r.match]:[])).map(song=>[song.id,song])).values()];
-  const finalMatches=eligible.map(song=>supplementLyrics(song,eligible)).sort(compareLyrics);
+  const ranked=[...eligible].sort(compareLyrics),timing=ranked.length?lyricTiming(ranked[0]):[];
+  // Annotations cannot change selectionTiming; lower timing tiers cannot win.
+  const contenders=eligible.filter(song=>lyricTiming(song).every((value,i)=>value===timing[i]));
+  const finalMatches=[];let slice=performance.now();
+  for(const song of contenders){
+    if(performance.now()-slice>=8){
+      await new Promise(resolve=>setTimeout(resolve,0));
+      signal.throwIfAborted();slice=performance.now();
+    }
+    finalMatches.push(supplementLyrics(song,eligible));
+  }
+  finalMatches.sort(compareLyrics);
   for(const song of finalMatches)items.set(song.id,song);
   let result={...snapshot(),match:finalMatches[0]||null};
   if(!result.match){

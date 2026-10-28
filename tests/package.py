@@ -14,12 +14,15 @@ with zipfile.ZipFile(package) as archive:
                    or 'python.exe' in name.lower() for name in names), 'Experimental runtime or model is bundled'
     required = ['AMLL Companion.exe', 'unilyric-bridge.exe', 'README.md', 'LICENSE',
                 'THIRD-PARTY-NOTICES.md', 'wwwroot/index.html']
-    required += ['wwwroot/assets/' + path.name for path in (root / 'dist/assets').iterdir()]
+    assets = {'wwwroot/assets/' + path.name for path in (root / 'dist/assets').iterdir() if path.is_file()}
+    assert {name for name in names if name.startswith('wwwroot/assets/') and not name.endswith('/')} == assets, 'Stale or missing frontend assets'
+    required += sorted(assets)
     for name in required:
         assert name in names, name
         assert archive.read(names[name]) == (directory / name).read_bytes(), name
     assert archive.testzip() is None, 'ZIP CRC check failed'
-checksum = hashlib.sha256(package.read_bytes()).hexdigest()
-package.with_suffix('.zip.sha256').write_text(checksum + '  ' + package.name + '\n', encoding='ascii')
+with package.open('rb') as stream:
+    checksum = hashlib.file_digest(stream, 'sha256').hexdigest()
+assert package.with_suffix('.zip.sha256').read_text(encoding='ascii').strip() == checksum + '  ' + package.name, 'SHA256 file does not match the archive'
 print(f'PASS ZIP CRC, executable/assets, no alignment runtime or model; bytes={package.stat().st_size}')
 print('SHA256', checksum)

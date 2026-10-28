@@ -1,7 +1,7 @@
 import { parseLrc, parseLrcA2 } from '@applemusic-like-lyrics/lyric';
-import { normalize, artistNames, simplify, musicTitles, musicArtists, artistQueries } from './matching.mjs';
+import { normalize, artistNames, matchesArtists, simplify, musicTitles, musicArtists, artistQueries } from './matching.mjs';
 import { compareLyrics, lyricQuality } from './lyrics-quality.mjs';
-import { providerRequest, hasLyricContent } from './provider-lyrics.mjs';
+import { providerRequest, hasLyricContent, validLyricLines } from './provider-lyrics.mjs';
 
 const cache = new Map();
 const timestamp = /\[\d{1,3}:[0-5]\d(?:[.:]\d{1,3})?\]/;
@@ -61,10 +61,12 @@ export function webSong(text, evidence, music, url) {
   if (!allowedTitles.length || !names.length) return null;
   if (titles.length && titles.some(t => !allowedTitles.includes(normalize(t)))) return null;
   if (artists.length && artists.some(a => !artistNames([a]).some(n => names.includes(normalize(n))))) return null;
+  if(artists.length&&!matchesArtists(artists,music))return null;
   let filename = '';
   try { filename = decodeURIComponent(new URL(url).pathname.split('/').at(-1)); } catch { }
   const page = normalize(evidence || filename);
   if ((!titles.length && !allowedTitles.some(title=>page.includes(title))) || (!artists.length && !names.some(n => page.includes(n)))) return null;
+  if(!artists.length&&!matchesArtists(artistNames(musicArtists(music)).filter(name=>page.includes(normalize(name))),music))return null;
   const versions = s => (simplify(s).match(/live|remix|acoustic|instrumental|现场|演唱会|伴奏/gi) || []).map(s => s.toLowerCase()).sort().join();
   if (versions(titles.join(' ') || evidence) !== versions(`${music.musicName} ${music.albumName || ''}`)) return null;
   const length = tags('length')[0]?.match(/^(\d+):(\d+(?:\.\d+)?)$/);
@@ -82,6 +84,7 @@ export function webSong(text, evidence, music, url) {
       || (music.duration > 0 && l.startTime > music.duration + 3000))) return null;
   if (music.duration > 0) lines.forEach(l => { l.endTime = Math.max(l.startTime, Math.min(l.endTime, music.duration));
     l.words.forEach(w => { w.endTime = Math.max(w.startTime, Math.min(w.endTime, music.duration)); }); });
+  if(!validLyricLines(lines))return null;
   const source = `网页 LRC · ${new URL(url).hostname} · ${lyricQuality(lines)[0] ? '逐词同步' : '逐行同步'}`;
   return { id: `web:${url}`, source: 'web', sourceUrl: url, musicNames: [music.musicName], artistNames: music.artists,
     albumNames: tags('al'), lyrics: lrc, resolvedLyrics: { lines, source, authors: source } };

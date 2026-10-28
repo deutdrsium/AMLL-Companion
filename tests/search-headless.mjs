@@ -26,9 +26,11 @@ try{
      if(request.provider==='qq'){await delay(3500);window.slowFinished=true;return [];}
      if(request.provider==='kugou')await delay(1800);
      if(!['netease','kugou'].includes(request.provider))return [];
-     return [{provider_name:request.provider,provider_id:request.provider,title:music.musicName,artists:[{name:'Artist'}],album:'Album',duration:100000}];
+     const row={provider_name:request.provider,provider_id:request.provider,title:music.musicName,artists:[{name:'Artist'}],album:'Album',duration:100000};
+     return request.provider==='netease'?[row,{...row,provider_id:'broken',album:'Live'}]:[row];
     }
-    await delay(150);const word=request.provider==='kugou';
+    await delay(150);if(request.data.provider_id==='broken')throw Error('Fixture download failed');
+    const word=request.provider==='kugou';
     return {lines:[0,1,2].map(i=>({startTime:1000+i*5000,endTime:4000+i*5000,isBG:false,isDuet:false,translatedLyric:'',romanLyric:'',words:word
      ?[{word:'Better ',startTime:1000+i*5000,endTime:2000+i*5000},{word:'lyric',startTime:2200+i*5000,endTime:4000+i*5000}]
      :[{word:'Fast line',startTime:1000+i*5000,endTime:4000+i*5000}]}))};
@@ -39,6 +41,7 @@ try{
  const firstMs=Date.now()-began,firstText=await page.locator('.lyric-player').innerText();
  if(!baseline){assert.ok(firstMs<1800,`First lyric delayed ${firstMs}ms`);assert.ok(firstText.includes('Fast line'));
   await page.waitForFunction(()=>document.querySelector('.lyric-player')?.textContent.includes('Better'));
+  assert.equal(await page.evaluate(()=>!!window.slowFinished),false,'Upgrade automatically before slow sources finish, without opening the picker');
  }
  const finalMs=Date.now()-began;
  console.log(JSON.stringify({mode:baseline?'0.6.4 baseline':'progressive',firstMs,finalMs,first: firstText.includes('Fast line')?'line':'word'}));
@@ -46,11 +49,17 @@ try{
   await page.reload();await page.waitForFunction(()=>document.querySelector('.lyric-player')?.textContent.includes('Fast line'));
   await page.getByRole('button',{name:'选择歌词版本',exact:true}).click();
   const canceled=await page.evaluate(()=>window.cancelCalls);
-  await page.locator('.candidates button').filter({hasText:'网易云'}).click();
+  await page.locator('.candidates button').filter({hasText:'网易云',hasNotText:'Live'}).click();
   await page.waitForFunction(()=>window.slowFinished);
   assert.ok((await page.locator('.lyric-player').innerText()).includes('Fast line'),'Background word lyrics must not replace a manual selection');
   assert.ok(await page.evaluate(before=>window.cancelCalls>before,canceled));
   console.log('PASS manual selection cancels background search and survives late better lyrics');
+  await page.getByRole('button',{name:'选择歌词版本',exact:true}).click();
+  await page.locator('.candidates button').filter({hasText:'Live'}).click();
+  assert.ok((await page.locator('.lyric-player').innerText()).includes('Fast line'),'Keep current lyrics while downloading a manual replacement');
+  await page.getByRole('alert').filter({hasText:'Fixture download failed'}).waitFor();
+  assert.ok((await page.locator('.lyric-player').innerText()).includes('Fast line'),'Failed replacement must preserve current lyrics');
+  console.log('PASS failed manual replacement preserves displayed lyrics and reports the error');
   assert.equal(await page.evaluate(()=>window.alignmentCalls),0,'An old enabled preference must not invoke alignment');
   await page.getByRole('button',{name:'设置',exact:true}).click();
   assert.equal(await page.getByRole('checkbox',{name:'自动生成逐字时间轴'}).count(),0);

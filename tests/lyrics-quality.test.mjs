@@ -80,9 +80,11 @@ test('sentence alignment fills split and merged translations without consuming a
  original.musicNames=['Song'];original.artistNames=['Artist'];
  const donor=song('translated',[make('青い光の中へ',900,'第一句'),make('静かな',6900,'安静的'),make('夜を歩こう',7800,'夜晚'),make('青い光',29900,'后面的副歌'),make('長い道で星を見付けたんだ',34900,'小字差异也可对应')]);
  const result=supplementTranslations(original,[donor]);
- assert.deepEqual(result.resolvedLyrics.lines.map(l=>l.translatedLyric),['第一句','安静的 夜晚','后面的副歌','小字差异也可对应']);
+ assert.deepEqual(result.resolvedLyrics.lines.map(l=>l.translatedLyric),['第一句','','安静的 夜晚','后面的副歌','小字差异也可对应']);
+ assert.deepEqual(result.resolvedLyrics.lines.map(l=>l.words),original.resolvedLyrics.lines.slice(2).map(l=>l.words),'Original words and row breaks must be preserved');
+ assert.deepEqual(result.resolvedLyrics.lines.map(l=>[l.startTime,l.endTime,l.romanLyric]),original.resolvedLyrics.lines.slice(2).map(l=>[l.startTime,l.endTime,l.romanLyric]));
  assert.deepEqual(result.resolvedLyrics.lines.flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]),original.resolvedLyrics.lines.slice(2).flatMap(l=>l.words).map(w=>[w.startTime,w.endTime]));
- assert.equal(lyricQuality(result.resolvedLyrics.lines)[2],1);
+ assert.equal(lyricQuality(result.resolvedLyrics.lines)[2],0.8,'A full sentence is displayed once, rather than duplicated across rows');
  assert.equal(original.resolvedLyrics.lines.length,7);assert.equal(compareLyrics(result,original)<0,true);
  assert.deepEqual(result.resolvedLyrics.selectionTiming,lyricQuality(original.resolvedLyrics.lines,original).slice(0,2));
 });
@@ -93,4 +95,44 @@ test('alignment leaves unrelated text untouched and never replaces an existing t
  assert.equal(supplementTranslations(base,[far]),base);
  const unrelated=song('other',[{...line(false,'wrong'),words:[{word:'entirely different lyrics'}]}]);
  assert.equal(supplementTranslations(base,[unrelated]),base);
+});
+
+test('ranking reuses scores but invalidates replaced lyrics and changed identity',()=>{
+ let reads=0;const original=line(true),words=original.words;
+ Object.defineProperty(original,'words',{get(){reads++;return words;}});
+ const candidate=song('cached',[original]),plain=song('plain',[line(false)]);
+ assert.ok(compareLyrics(candidate,plain)<0);reads=0;
+ for(let i=0;i<100;i++)assert.ok(compareLyrics(candidate,plain)<0);
+ assert.equal(reads,0,'Comparisons must not rescan unchanged lines');
+ candidate.resolvedLyrics.lines=[line(false)];assert.equal(compareLyrics(candidate,plain),0);
+ candidate.resolvedLyrics={lines:[line(true)]};assert.ok(compareLyrics(candidate,plain)<0);
+ const header=line(true);header.words=[{word:'Song - ',startTime:1000,endTime:2000},{word:'Artist',startTime:2000,endTime:3000}];
+ const identity=song('identity',[header,line(false)]);
+ assert.ok(compareLyrics(identity,plain)<0);
+ identity.musicNames=['Song'];identity.artistNames=['Artist'];identity.duration=180000;
+ assert.equal(compareLyrics(identity,plain),0,'New identity must update metadata filtering');
+ candidate.resolvedLyrics.selectionTiming=[0,0];assert.equal(compareLyrics(candidate,plain),0);
+ candidate.resolvedLyrics.selectionTiming[0]=2;assert.ok(compareLyrics(candidate,plain)<0);
+ assert.equal(lyricQuality(candidate.resolvedLyrics.lines)[0],1,'Selection overrides cannot mutate cached raw quality');
+});
+
+test('banded sentence matching agrees with full edit distance for deterministic variants',async()=>{
+ const {supplementTranslations}=await import('../shared/lyrics-quality.mjs');
+ const distance=(a,b)=>{let row=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){
+  const next=[i];for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+Number(a[i-1]!==b[j-1]));row=next;
+ }return row[b.length];};
+ const text='abcdefghijklmnopqrstuvwx';
+ for(let seed=0;seed<120;seed++){
+  let other=text;
+  for(let edit=0;edit<seed%5;edit++){
+   const at=(seed*7+edit*11)%other.length;
+   other=edit%3===0?other.slice(0,at)+'z'+other.slice(at+1):edit%3===1?other.slice(0,at)+'z'+other.slice(at):other.slice(0,at)+other.slice(at+1);
+  }
+  const baseLine={...line(true),words:[{word:text.slice(0,8),startTime:1000,endTime:2000},{word:text.slice(8),startTime:2000,endTime:3000}]};
+  const donorLine={...line(false,'translation'),words:[{word:other,startTime:1000,endTime:3000}]};
+  const base=song('base',[baseLine]),donor=song('donor',[donorLine]);
+  const merged=supplementTranslations(base,[donor]);
+  const expected=distance(text,other)<=Math.min(2,Math.floor(Math.min(text.length,other.length)/10));
+  assert.equal(merged!==base,expected,other);
+ }
 });

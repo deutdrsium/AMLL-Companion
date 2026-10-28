@@ -16,23 +16,33 @@ export function artistNames(artists) {
 export const musicArtists=music=>[...new Set([...music.artists,...(music.artistAliases||[])])];
 export const musicTitles=music=>[...new Set([music.musicName,...(music.titleAliases||[])].flatMap(t=>[t,simplify(t),titleWithoutCredits(t),simplify(titleWithoutCredits(t))]))].filter(Boolean);
 export const artistQueries=music=>[...new Map([music.artists,...(music.artistAliases||[]).map(a=>[a])].map(a=>[JSON.stringify(a.map(n=>n.normalize('NFKC').toLocaleLowerCase())),a])).values()];
+export function matchesArtists(credited,music){
+  const available=new Set(artistNames(credited).map(normalize));
+  const matches=raw=>{
+    const whole=normalize(raw);
+    if(available.has(whole))return true;
+    const parts=artistNames([raw]).map(normalize).filter(name=>name!==whole);
+    return parts.length>0&&parts.every(name=>available.has(name));
+  };
+  if(!music.artists.length)return false;
+  if(music.artists.every(matches))return true;
+  // Flat aliases cannot establish which of several distinct artists a name belongs to.
+  return music.artists.length===1&&(music.artistAliases||[]).some(matches);
+}
 export function bestMatch(items, music) {
+  const titles=new Set(musicTitles(music).map(title=>normalize(titleWithoutCredits(title))));
+  const albumName=normalize(music.albumName);
   const exact = items.filter(
     (item) =>
       item.musicNames.some(
-        (name) => musicTitles(music).some(title=>normalize(titleWithoutCredits(name)) === normalize(titleWithoutCredits(title))),
+        (name) => titles.has(normalize(titleWithoutCredits(name))),
       ) &&
-      music.artists.length > 0 &&
-      artistNames(musicArtists(music)).some((artist) =>
-        artistNames(item.artistNames).some((name) => normalize(name) === normalize(artist)),
-      ),
+      matchesArtists(item.artistNames,music),
   );
   const album = exact.filter(
     (item) =>
       music.albumName &&
-      item.albumNames.some(
-        (name) => normalize(name) === normalize(music.albumName),
-      ),
+      item.albumNames.some(name=>normalize(name)===albumName),
   );
   const candidates = album.length ? album : exact;
   const durationMatches = candidates.filter(s => !(music.duration > 0 && s.duration > 0)

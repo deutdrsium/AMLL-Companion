@@ -58,3 +58,9 @@ test('prefix extension stops at body, background and duet lines',()=>{
  late.push(line('作词：夏背',30000),line('Final lyric',170000));
  assert.equal(cleanLyricLines(late,metadataContext),late);
 });
+
+test('metadata filtering does not inspect body words beyond the edge window',()=>{
+ const lines=Array.from({length:20},(_,i)=>line('Real lyric',30000+i*3000));
+ Object.defineProperty(lines[10],'words',{get(){throw Error('Body must not be scanned');}});
+ assert.equal(cleanLyricLines(lines,context),lines);
+});

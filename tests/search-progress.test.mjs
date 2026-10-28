@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {searchProgressively} from '../shared/lyrics-pipeline.mjs';
+import {compareLyrics,supplementLyrics} from '../shared/lyrics-quality.mjs';
 import {memoizeSearchRequest,eachSearchQuery} from '../shared/search-work.mjs';
 import {searchProvider} from '../shared/provider-lyrics.mjs';
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
@@ -73,4 +74,21 @@ test('final selection combines translations from every eligible version, never u
  assert.equal(result.match.id,'word');assert.equal(result.match.resolvedLyrics.lines[0].translatedLyric,'正确翻译');
  assert.match(result.match.resolvedLyrics.source,/translation source/);assert.equal(word.resolvedLyrics.lines[0].translatedLyric,undefined);
  assert.equal(result.items.find(s=>s.id==='word').resolvedLyrics.lines[0].translatedLyric,'正确翻译');
+});
+
+test('pruned supplementation preserves the winner, including stable ties and lower-tier donors',async()=>{
+ for(let seed=0;seed<12;seed++){
+  const songs=Array.from({length:8},(_,id)=>({id,resolvedLyrics:{source:String(id),lines:Array.from({length:3},(_,i)=>{
+   const startTime=1000+i*5000,word=(seed+id+i)%3!==0;
+   return {startTime,endTime:startTime+2000,translatedLyric:(seed+id+i)%2?'translation':'',
+    words:word?[{word:'First ',startTime,endTime:startTime+1000},{word:'lyric',startTime:startTime+1000,endTime:startTime+2000}]
+     :[{word:'First lyric',startTime,endTime:startTime+2000}]};
+  })}}));
+  const expected=songs.map(song=>supplementLyrics(song,songs)).sort(compareLyrics)[0];
+  const result=await searchProgressively(music,new AbortController().signal,{
+   metadata:async()=>({music}),sources:[async()=>({items:songs,eligible:songs,match:songs[0]})],web:async()=>assert.fail('Unexpected fallback'),
+  });
+  assert.equal(result.match.id,expected.id,`seed ${seed}`);
+  assert.deepEqual(result.match.resolvedLyrics.lines,expected.resolvedLyrics.lines);
+ }
 });

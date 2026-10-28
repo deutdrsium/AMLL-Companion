@@ -37,3 +37,12 @@ test('web lookup honors track cancellation before making requests', async () => 
   const controller = new AbortController(); controller.abort();
   await assert.rejects(searchWebLyrics(music, controller.signal, () => assert.fail('request after abort')), { name: 'AbortError' });
 });
+
+test('tagged web lyrics cannot pass a duet check with only one credited singer',()=>{
+ const duet={...music,artists:['Test Artist','Guest']};
+ assert.equal(webSong(lrc,'',duet,url),null);
+ assert.ok(webSong(lrc.replace('[ar:Test Artist]','[ar:Test Artist / Guest]'),'',duet,url));
+ const noTags=lrc.split('\n').slice(2).join('\n');
+ assert.equal(webSong(noTags,'Test Song Test Artist',duet,url),null);
+ assert.ok(webSong(noTags,'Test Song Test Artist Guest',duet,url));
+});

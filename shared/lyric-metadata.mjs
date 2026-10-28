@@ -11,6 +11,7 @@ const titleKey=text=>normalize(titleWithoutCredits(text).replace(/\([^)]*\)|（[
 const headerKey=(text,key)=>key(text.replace(/[（(][^）)]*$/,''));
 
 function titleCredit(text,context){
+  if(!/[-—–－]/.test(text))return false;
   const titles=[...(context.musicNames||[]),context.musicName,...(context.titleAliases||[])].filter(Boolean).map(titleKey);
   const artists=[...(context.artistNames||[]),...(context.artists||[]),...(context.artistAliases||[])].map(artistKey).filter(Boolean);
   if(!titles.length||!artists.length)return false;
@@ -31,14 +32,14 @@ export function inspectLyricMetadata(lines,context={}){
   let prefix=true;
   const removed=[];
   const kept=lines.filter((line,index)=>{
+    const opening=prefix||index<8&&line.startTime<=20000;
+    const ending=index>=lines.length-6&&line.startTime>=duration-20000;
+    if(!opening&&!ending)return true;
     const raw=textOf(line).normalize('NFKC').replace(/[\u200b-\u200d\u2060\ufeff]/g,'').trim();
     const text=unbracket(raw);if(!text)return true;
     if(line.isBG||line.isDuet){prefix=false;return true;}
     const reason=credit.test(text)||byCredit.test(text)||/^\[(?:ti|ar|al|au|by|offset|length|re|ve):[^\r\n\]]+\]$/i.test(raw)?'credit':titleCredit(text,context)?'title-artist':null;
-    const opening=prefix||index<8&&line.startTime<=20000;
-    const ending=index>=lines.length-6&&line.startTime>=duration-20000;
     if(!reason)prefix=false;
-    if(!opening&&!ending)return true;
     if(reason)removed.push({index,reason,text});
     return !reason;
   });

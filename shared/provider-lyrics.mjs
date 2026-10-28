@@ -27,10 +27,12 @@ export async function providerRequest(provider, operation, data, signal, bridge 
 }
 
 export function compatibleSongs(rows, provider, music) {
-  return [...new Map(rows.map(row => [row.provider_id, row])).values()].filter(row => row.provider_name === provider && typeof row.provider_id === 'string'
+  if(!Array.isArray(rows))throw new Error(`${providerNames[provider]} 返回了无效搜索结果`);
+  const valid=rows.filter(row => row?.provider_name === provider && typeof row.provider_id === 'string'&&row.provider_id.trim()
     && typeof row.title === 'string' && Array.isArray(row.artists))
+  return [...new Map(valid.map(row=>[row.provider_id,row])).values()]
     .map(row => ({ id: `${provider}:${row.provider_id}`, source: provider, providerData: row,
-      musicNames: [decode(row.title)], artistNames: row.artists.map(a => a.name).filter(n => typeof n === 'string').map(decode),
+      musicNames: [decode(row.title)], artistNames: row.artists.map(a => a?.name).filter(n => typeof n === 'string').map(decode),
       albumNames: [decode(row.album)], duration: row.duration }))
     .filter(song => bestMatch([song], music))
     .sort(recordingOrder(music));
@@ -42,12 +44,15 @@ export function canAutoSelect(song, music) {
   return (knownDuration ? Math.abs(song.duration-music.duration) <= 3000 : sameAlbum)
     && version(simplify(song.albumNames.join(' '))) === version(simplify(music.albumName));
 }
+export function validLyricLines(lines){
+  return Array.isArray(lines)&&lines.every(line=>line&&Number.isFinite(line.startTime)&&line.startTime>=0
+    &&Number.isFinite(line.endTime)&&line.endTime>=line.startTime&&Array.isArray(line.words)
+    &&line.words.every(word=>word&&typeof word.word==='string'&&Number.isFinite(word.startTime)&&word.startTime>=0
+      &&Number.isFinite(word.endTime)&&word.endTime>=word.startTime));
+}
 export async function getProviderLyrics(song, signal, request = providerRequest) {
   const data = await request(song.source, 'get', song.providerData, signal);
-  if (!Array.isArray(data?.lines) || data.lines.length < 2 || !data.lines.some(l => l.startTime > 0)
-    || data.lines.some(l => !Number.isFinite(l.startTime) || !Number.isFinite(l.endTime)
-      || l.endTime < l.startTime || !Array.isArray(l.words)
-      || l.words.some(w => typeof w.word !== 'string' || !Number.isFinite(w.startTime) || !Number.isFinite(w.endTime))))
+  if (!validLyricLines(data?.lines) || data.lines.length < 2 || !data.lines.some(l => l.startTime > 0))
     throw new Error(`${providerNames[song.source]} 此版本没有同步歌词`);
   if (!hasLyricContent(data.lines, song)) throw new Error(`${providerNames[song.source]} 此版本仅有歌曲署名，没有歌词正文`);
   const lines=cleanLyricLines(data.lines,song);
@@ -77,19 +82,19 @@ export async function searchProvider(provider, music, signal, request = provider
   }
   await eachSearchQuery(queries,signal,async data=>{
     try{
-      const rows=await request(provider,'search',data,signal);succeeded=true;
-      for(const song of compatibleSongs(rows,provider,music))found.set(song.id,song);
+      const rows=await request(provider,'search',data,signal),songs=compatibleSongs(rows,provider,music);succeeded=true;
+      for(const song of songs)if(!found.has(song.id))found.set(song.id,song);
       if(onProgress){
         const items=[...found.values()].sort(recordingOrder(music));
         onProgress({items,match:null});
         await resolveBest(items.filter(s=>canAutoSelect(s,music)),
-          (song,s)=>getProviderLyrics(song,s,request),signal,match=>onProgress({items,match}));
+          (song,s)=>song.resolvedLyrics||getProviderLyrics(song,s,request),signal,match=>onProgress({items,match}));
       }
     }catch(error){signal.throwIfAborted();failure=error;}
   });
   if(!succeeded&&failure)throw failure;
   const items=[...found.values()].sort(recordingOrder(music));
   const match = await resolveBest(items.filter(s => canAutoSelect(s, music)),
-    (song, signal) => getProviderLyrics(song, signal, request), signal);
+    (song, signal) => song.resolvedLyrics||getProviderLyrics(song, signal, request), signal);
   return { items, match, eligible:items.filter(s=>canAutoSelect(s,music)&&s.resolvedLyrics) };
 }

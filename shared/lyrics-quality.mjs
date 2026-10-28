@@ -34,13 +34,32 @@ export function lyricQuality(lines,context={}) {
     main.filter(l => l.romanLyric?.trim()).length / main.length,
     Number(lines.some(l => l.isBG)) + Number(lines.some(l => l.isDuet))];
 }
+const qualityCache=new WeakMap();
+const emptyQuality=[0,0,0,0,0];
+
+// Parsed lines are immutable. Loads and supplementation replace the lines array.
+function songQuality(song){
+  const lyrics=song.resolvedLyrics;
+  if(!lyrics)return emptyQuality;
+  const context=JSON.stringify([song.duration,song.musicName,song.musicNames,song.titleAliases,
+    song.artists,song.artistNames,song.artistAliases]);
+  const cached=qualityCache.get(lyrics);
+  if(cached?.lines===lyrics.lines&&cached.context===context)return cached.quality;
+  const quality=lyricQuality(lyrics.lines,song);
+  qualityCache.set(lyrics,{lines:lyrics.lines,context,quality});
+  return quality;
+}
+
+export const lyricTiming=song=>song.resolvedLyrics?.selectionTiming||songQuality(song).slice(0,2);
+
 export function compareLyrics(a, b) {
-  const qa = lyricQuality(a.resolvedLyrics?.lines || [],a);
-  const qb = lyricQuality(b.resolvedLyrics?.lines || [],b);
+  const qa = songQuality(a),qb = songQuality(b);
   // Regrouping a translated sentence must not penalize the original word-timing coverage.
-  qa.splice(0,2,...(a.resolvedLyrics?.selectionTiming||qa.slice(0,2)));
-  qb.splice(0,2,...(b.resolvedLyrics?.selectionTiming||qb.slice(0,2)));
-  for (let i = 0; i < qa.length; i++) if (qa[i] !== qb[i]) return qb[i] - qa[i];
+  for (let i = 0; i < qa.length; i++) {
+    const left=i<2?(a.resolvedLyrics?.selectionTiming?.[i]??qa[i]):qa[i];
+    const right=i<2?(b.resolvedLyrics?.selectionTiming?.[i]??qb[i]):qb[i];
+    if(left!==right)return right-left;
+  }
   return 0; // Stable order preserves metadata preference when quality is equal.
 }
 export async function resolveBest(candidates, resolve, signal, onResolved) {
@@ -62,11 +81,20 @@ function textDistance(a,b){
   if(a===b)return 0;
   const limit=Math.min(2,Math.floor(Math.min(a.length,b.length)/10));
   if(!limit||Math.abs(a.length-b.length)>limit)return null;
-  let row=Array.from({length:b.length+1},(_,i)=>i);
+  const outside=limit+1;
+  let row=new Uint16Array(b.length+1).fill(outside),next=new Uint16Array(b.length+1).fill(outside);
+  for(let j=0;j<=Math.min(limit,b.length);j++)row[j]=j;
   for(let i=1;i<=a.length;i++){
-    const next=[i];
-    for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+Number(a[i-1]!==b[j-1]));
-    if(Math.min(...next)>limit)return null;row=next;
+    const low=Math.max(1,i-limit),high=Math.min(b.length,i+limit);
+    next.fill(outside,low-1,Math.min(b.length+1,high+2));
+    if(low===1)next[0]=Math.min(i,outside);
+    let best=outside;
+    for(let j=low;j<=high;j++){
+      next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+Number(a[i-1]!==b[j-1]));
+      best=Math.min(best,next[j]);
+    }
+    if(best>limit)return null;
+    [row,next]=[next,row];
   }
   return row[b.length]<=limit?row[b.length]:null;
 }
@@ -133,8 +161,8 @@ export function supplementDuet(song,donors){
   const target=mainLines(base.lines,song);
   if(target.some(l=>l.isDuet))return song;
   let best=null;
-  for(const donor of [...donors].sort(compareLyrics)){
-    if(donor.id===song.id||!donor.resolvedLyrics)continue;
+  const duetDonors=donors.filter(donor=>donor.id!==song.id&&donor.resolvedLyrics?.lines.some(line=>line.isDuet&&!line.isBG));
+  for(const donor of duetDonors.sort(compareLyrics)){
     const from=mainLines(donor.resolvedLyrics.lines,donor);if(!from.some(l=>l.isDuet))continue;
     const replacements=new Map();let coverage=0;
     for(const pair of translationPairs(target,from,true)){
@@ -159,30 +187,29 @@ export const supplementLyrics=(song,donors)=>supplementTranslations(supplementDu
 // Recording identity is checked before donors reach here; align sentences in order, including split lines.
 export function supplementTranslations(song, donors) {
   const base=song.resolvedLyrics;
-  if(!base||!lyricQuality(base.lines,song)[0])return song;
+  if(!base||!songQuality(song)[0])return song;
+  const translatedDonors=donors.filter(donor=>donor.id!==song.id&&songQuality(donor)[2]>0);
+  if(!translatedDonors.length)return song;
+  if(mainLines(base.lines,song).every(l=>l.translatedLyric?.trim()))return song;
   let lines=cleanLyricLines(base.lines,song).map(line=>({...line}));const sources=new Set(),authors=new Set();
-  for(const donor of [...donors].sort((a,b)=>lyricQuality(b.resolvedLyrics?.lines||[])[2]-lyricQuality(a.resolvedLyrics?.lines||[])[2]||compareLyrics(a,b))){
-    if(mainLines(lines).every(l=>l.translatedLyric?.trim()))break;
+  let targetLines=mainLines(lines,song);
+  for(const donor of translatedDonors.sort((a,b)=>songQuality(b)[2]-songQuality(a)[2]||compareLyrics(a,b))){
+    if(targetLines.every(l=>l.translatedLyric?.trim()))break;
     if(donor.id===song.id||!donor.resolvedLyrics)continue;
-    if(!mainLines(donor.resolvedLyrics.lines).some(l=>l.translatedLyric?.trim()))continue;
-    let used=false;const remove=new Set();
-    for(const pair of translationPairs(mainLines(lines,song),mainLines(donor.resolvedLyrics.lines,donor))){
+    const fromLines=mainLines(donor.resolvedLyrics.lines,donor);
+    let used=false;
+    for(const pair of translationPairs(targetLines,fromLines)){
       const {target,from}=pair;
       if(target.some(l=>l.translatedLyric?.trim())||from.some(l=>!l.translatedLyric?.trim()))continue;
-      // Do not regroup across a background line or another non-body annotation.
+      // Do not match across a background line or another non-body annotation.
       const at=lines.indexOf(target[0]);if(target.some((l,i)=>lines[at+i]!==l))continue;
       const first=target[0];
       first.translatedLyric=from.map(l=>l.translatedLyric.trim()).join(' ');
-      if(target.length>1){
-        first.words=target.flatMap((l,i)=>i&&/[a-z0-9]$/i.test(lineText(target[i-1]))&&/^[a-z0-9]/i.test(lineText(l))
-          ?l.words.map((w,j)=>j?w:{...w,word:' '+w.word}):l.words);
-        first.endTime=Math.max(...target.map(l=>l.endTime));
-        first.romanLyric=target.map(l=>l.romanLyric?.trim()).filter(Boolean).join(' ');
-        target.slice(1).forEach(l=>remove.add(l));
-      }
+      // Without source boundaries a sentence translation cannot be split faithfully.
+      // Attach it once, keeping every original row, word, timestamp and romanization.
       used=true;
     }
-    lines=lines.filter(l=>!remove.has(l));
+    targetLines=mainLines(lines,song);
     if(used){sources.add(donor.resolvedLyrics.source||String(donor.id));authors.add(donor.resolvedLyrics.authors||donor.resolvedLyrics.source||String(donor.id));}
   }
   if(!sources.size)return song;

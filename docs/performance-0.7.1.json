@@ -1,0 +1,20 @@
+{
+  "baseline": "0.6.14 source (e46eae0)",
+  "corpus": "cached real lyrics",
+  "candidates": 80,
+  "snapshots": 80,
+  "previous": {
+    "totalMs": 6405.1,
+    "maxSortMs": 260,
+    "p95SortMs": 236
+  },
+  "current": {
+    "totalMs": 17.6,
+    "maxSortMs": 1.3,
+    "p95SortMs": 0.4
+  },
+  "speedup": 364.8,
+  "rankingIdentical": true,
+  "maxProgressCallbackMs": 1,
+  "updates": 81
+}

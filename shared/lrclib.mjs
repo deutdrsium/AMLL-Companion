@@ -11,7 +11,7 @@ export async function searchLrclib(music, signal, fetcher = fetch, options={}) {
     let rows;
     try{rows=await (options.rows?options.rows(title,signal):lrclibRows(title,signal,fetcher));succeeded=true;}catch(error){signal.throwIfAborted();failure=error;return;}
     for (const row of rows) {
-      if (!Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.syncedLyrics !== 'string' || !row.syncedLyrics.trim()
+      if (!row||!Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.syncedLyrics !== 'string' || !row.syncedLyrics.trim()
         || ![row.trackName, row.artistName, row.albumName].every(v => typeof v === 'string')
         || !Number.isFinite(row.duration) || row.duration <= 0) continue;
       const song = { id: -row.id, source: 'lrclib', musicNames: [row.trackName], artistNames: [row.artistName],

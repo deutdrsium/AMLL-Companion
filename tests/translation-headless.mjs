@@ -39,6 +39,8 @@ try{
   assert.match(await selected.innerText(),/翻译/);
   assert.match(await selected.innerText(),/音译/);
   assert.match(await selected.innerText(),/翻译补全/);
-  console.log('PASS real Gregorio replay: automatic QQ selection, missing translation rendered, selected candidate translation and romanization 100%');
+  const body=filtered.lines.filter(line=>!line.isBG&&line.words.some(word=>word.word.trim()));
+  assert.match(await selected.innerText(),new RegExp(`${body.length} 行`),'Translation supplementation must preserve the base row count');
+  console.log('PASS real Gregorio replay: automatic QQ selection, missing translation rendered, original row count and romanization preserved');
   console.log('PASS first body sentence rendered, title/artist and credit lines hidden');
 }finally{await browser?.close();await new Promise(resolve=>server.httpServer.close(resolve));}

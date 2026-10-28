@@ -49,3 +49,20 @@ test('search cancellation stops fallback requests', async () => {
   controller.abort();
   await assert.rejects(findLyrics(track, () => { throw new Error('must not fetch'); }, controller.signal), {name:'AbortError'});
 });
+
+test('AMLL ignores null and malformed rows without losing valid songs',async()=>{
+ const result=await findLyrics(track,async()=>({items:[null,{},sunny]}),new AbortController().signal);
+ assert.equal(result.match.id,sunny.id);
+});
+
+test('matching requires all named collaborators and preserves whole band names and verified single-artist aliases',()=>{
+ const song={id:2,musicNames:['Duet'],artistNames:['Singer A','Singer B'],albumNames:['Album']};
+ const track={musicName:'Duet',artists:['Singer A','Singer B'],albumName:'Album'};
+ assert.equal(bestMatch([{...song,artistNames:['Singer A']}],track),null);
+ assert.equal(bestMatch([song],track),song);
+ assert.equal(bestMatch([{...song,artistNames:['Singer A']}],{...track,artists:['Singer A & Singer B']}),null);
+ const band={...song,artistNames:['Earth, Wind & Fire']};
+ assert.equal(bestMatch([band],{...track,artists:['Earth, Wind & Fire']}),band);
+ assert.equal(bestMatch([{...band,artistNames:['Earth']}],{...track,artists:['Earth, Wind & Fire']}),null);
+ assert.equal(bestMatch([{...song,artistNames:['一二三']}],{...track,artists:['Hifumi'],artistAliases:['一二三']})?.id,song.id);
+});

@@ -13,6 +13,14 @@ if(new URLSearchParams(location.search).has('debug'))Object.assign(window,{
 
 const clock=new PlaybackClock();
 clock.duration=180000;clock.base=65000;
+let expectedOffset=0;
+const rebuilds:{initialTime:number;expected:number}[]=[];
+Object.assign(window,{rebuilds});
+const rebuild=LyricPlayer.prototype.setLyricLines;
+LyricPlayer.prototype.setLyricLines=function(lines,initialTime=0){
+ if(lines.length)rebuilds.push({initialTime,expected:Math.round(clock.at()+expectedOffset)});
+ return rebuild.call(this,lines,initialTime);
+};
 let core:LyricPlayer;
 const sync=LyricPlayer.prototype.setCurrentTime;
 LyricPlayer.prototype.setCurrentTime=function(...args){core=this;return sync.apply(this,args);};
@@ -24,7 +32,7 @@ function Fixture(){
  const [offset,setOffset]=useState(0),[translation,setTranslation]=useState(true);
  Object.assign(window,{transitionTest:{
   replace:(version:string)=>setLines(make(version)),motion:setReduceMotion,translation:setTranslation,
-  unmount:()=>setMounted(false),offset:setOffset,
+  unmount:()=>setMounted(false),offset:(value:number)=>{expectedOffset=value;setOffset(value);},
   seek:(time:number)=>{clock.base=time;clock.seekRevision++;},
   play:()=>{clock.anchor=performance.now();clock.playing=true;},
   current:()=>({time:core.getCurrentTime(),clock:clock.at(),first:core.getLyricLines()[0]?.words[0].word}),

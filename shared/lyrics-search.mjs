@@ -22,7 +22,7 @@ export async function findLyrics(music, request, signal, onProgress) {
       try{result=await request("search", { ...query, pageSize: "100", page: String(page) }, signal);succeeded=true;}
       catch(error){signal.throwIfAborted();failure=error;break;}
       for (const item of Array.isArray(result.items) ? result.items : []) {
-        if (Number.isSafeInteger(item.id) && [item.musicNames, item.artistNames, item.albumNames]
+        if (item&&Number.isSafeInteger(item.id) && [item.musicNames, item.artistNames, item.albumNames]
           .every(a => Array.isArray(a) && a.every(v => typeof v === "string"))) items.set(item.id, item);
       }
       const all = [...items.values()];

@@ -26,3 +26,8 @@ test('album edition beats unrelated compilations with the same duration', async 
   ]}));
   assert.equal(result.match.id, -3);
 });
+
+test('null LRCLIB entries are skipped without losing valid lyrics',async()=>{
+ const result=await searchLrclib(music,new AbortController().signal,async()=>({ok:true,json:async()=>[null,{},row]}));
+ assert.equal(result.match.id,-1);
+});
