@@ -2,7 +2,7 @@ import {normalize, artistNames, titleWithoutCredits, musicTitles, musicArtists} 
 import {providerRequest} from './provider-lyrics.mjs';
 import {resolveCatalogueAliases} from './catalogue-metadata.mjs';
 
-const cacheKey='metadata-alias-cache-v2', correctionsKey='metadata-corrections-v1';
+const cacheKey='metadata-alias-cache-v3', correctionsKey='metadata-corrections-v1';
 const clean=value=>typeof value==='string'&&value.trim().length<=300?value.trim():'';
 const names=value=>[...new Set((Array.isArray(value)?value:[]).map(clean).filter(Boolean))];
 const version=text=>(String(text).match(/\blive\b|\bremix\b|\bacoustic\b|\binstrumental\b|现场|演唱会|伴奏/gi)||[]).map(normalize).sort().join();
@@ -55,27 +55,32 @@ const catalogueLookup=createMetadataLookup(undefined,3100);
 const aliasNames=entity=>names([entity?.name,entity?.title,...(Array.isArray(entity?.aliases)?entity.aliases:[]).filter(a=>a&&a.type!=='Search hint').map(a=>a.name)]);
 const parts=artists=>artists.flatMap(a=>a.split(/\s+(?:&|and|feat\.?|ft\.?|featuring|\/|x)\s+|[、，,；;]/i))
   .map(a=>a.replace(/\s*[（(][^()（）]*[)）]\s*$/,'').trim()).filter(Boolean);
-function preferred(entity,original,locale){
-  const aliases=Array.isArray(entity.aliases)?entity.aliases:[];
-  const regional=locale&&aliases.find(a=>a.primary&&a.locale?.split('-')[0]===locale&&a.type!=='Search hint');
-  if(regional)return regional.name;
+function preferred(entity,original){
   const primary=entity.name||entity.title;
   return primary||original;
 }
 export function releaseRegion(record,music){
   let releases=(Array.isArray(record.releases)?record.releases:[]).filter(r=>!r.status||r.status==='Official');
-  const album=releases.filter(r=>normalize(r.title)===normalize(music.albumName));if(album.length)releases=album;
-  const dated=releases.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date||''));
-  if(dated.length){const first=dated.map(r=>r.date).sort()[0];releases=dated.filter(r=>r.date===first);}
+  const bounds=date=>{
+    if(!/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(date||''))return null;
+    const [year,month,day]=date.split('-').map(Number);if(month&&(month<1||month>12))return null;
+    const last=new Date(Date.UTC(year,month||12,0)).getUTCDate();if(day&&(day<1||day>last))return null;
+    return {start:`${year}-${String(month||1).padStart(2,'0')}-${String(day||1).padStart(2,'0')}`,
+      end:`${year}-${String(month||12).padStart(2,'0')}-${String(day||last).padStart(2,'0')}`};
+  };
+  const dated=releases.map(r=>({release:r,range:bounds(r.date)})).filter(r=>r.range);
+  if(dated.length){const earliestEnd=dated.map(r=>r.range.end).sort()[0];releases=dated.filter(r=>r.range.start<=earliestEnd).map(r=>r.release);}
   const countries=names(releases.flatMap(r=>[r.country,...(r['release-events']||[]).flatMap(e=>e.area?.['iso-3166-1-codes']||[])])).filter(c=>/^[A-Z]{2}$/.test(c)&&c!=='XW');
-  const region=countries.length===1?countries[0]:'';
+  const worldwide=releases.some(r=>r.country==='XW'||r['release-events']?.some(e=>e.area?.['iso-3166-1-codes']?.includes('XW')));
+  const region=countries.length===1&&!worldwide?countries[0]:'';
   const languages=names(releases.map(r=>r['text-representation']?.language));
   const locale=({jpn:'ja',eng:'en',zho:'zh',cmn:'zh',kor:'ko',deu:'de',fra:'fr',spa:'es',por:'pt',rus:'ru',ita:'it'})[languages.length===1?languages[0]:'']
     ||({JP:'ja',CN:'zh',TW:'zh',HK:'zh',KR:'ko',US:'en',GB:'en',AU:'en',NZ:'en',DE:'de',FR:'fr',ES:'es',BR:'pt',PT:'pt',RU:'ru',IT:'it'})[region]||'';
   return {metadataReleaseCountries:countries,metadataReleaseRegion:region,metadataReleaseLocale:locale,
-    metadataRegionBasis:region?(album.length?'matched-release':'first-release'):''};
+    metadataRegionBasis:region?'earliest-known-release':''};
 }
-function albumMatches(record,music){return !!normalize(music.albumName)&&Array.isArray(record.releases)&&record.releases.some(r=>normalize(r.title)===normalize(music.albumName));}
+const albumKey=name=>normalize(String(name||'').replace(/[（(\[][^）)\]]*\bremaster(?:ed)?\b[^）)\]]*[）)\]]/gi,''));
+function albumMatches(record,music){return !!albumKey(music.albumName)&&Array.isArray(record.releases)&&record.releases.some(r=>albumKey(r.title)===albumKey(music.albumName));}
 function durationMatches(record,music){return !(music.duration>0&&record.length>0)||Math.abs(record.length-music.duration)<=3000;}
 export function metadataFromRecording(record,music){
   if(!uuid.test(record?.id||'')||!clean(record.title)||!durationMatches(record,music))return null;
@@ -92,9 +97,9 @@ export function metadataFromRecording(record,music){
   if(!matched.length||matched.some(m=>!m))return null;
   const ids=names(matched.map(m=>m.credit.artist.id)).sort();
   const region=releaseRegion(record,music);
-  const title=preferred({...record,aliases:(record.aliases||[]).filter(a=>version(a.name)===version(music.musicName))},music.musicName,region.metadataReleaseLocale);
+  const title=preferred(record,music.musicName);
   if(version(title)!==version(music.musicName))return null;
-  const artists=names(matched.map(m=>preferred(m.credit.artist,m.raw,region.metadataReleaseLocale)));
+  const artists=names(matched.map(m=>preferred(m.credit.artist,m.raw)));
   const aliases=names([...musicArtists(music),...matched.flatMap(m=>[m.raw,m.credit.name,...aliasNames(m.credit.artist)])])
     .filter((n,i,all)=>!artists.some(a=>normalize(a)===normalize(n))&&all.findIndex(a=>normalize(a)===normalize(n))===i);
   return {musicName:title,artists,
@@ -132,7 +137,7 @@ async function recordingMetadata(music,signal,request,cached){
   }catch(error){signal.throwIfAborted();return {message:'别名查询暂不可用，使用播放器信息；也可手动纠正'};}
 }
 function metadataMessage(metadata){
-  return metadata.metadataReleaseRegion?`已核对发行地区 ${metadata.metadataReleaseRegion}，使用发行语言名称；全部别名参与检索`
+  return metadata.metadataReleaseRegion?`最早已知发行地区 ${metadata.metadataReleaseRegion}；使用作品规范名称，全部别名参与检索`
     :'已核对作品名称；发行地区尚不明确，保留已确认的原文及别名';
 }
 export async function resolveMetadata(music,signal,options={}){
@@ -152,7 +157,7 @@ export async function resolveMetadata(music,signal,options={}){
     await pause(800,appleSignal);
     const apple=await resolveCatalogueAliases(music,appleSignal,options.catalogueLookup||options.lookup||catalogueLookup);
     appleSignal.throwIfAborted();
-    if(apple){earlyApple=apple;options.onUpdate?.({music:apple,message:'已核对歌曲原文，正在补全发行信息'});}
+    if(apple){earlyApple=apple;options.onUpdate?.({music:apple,message:'已核对跨地区别名，正在确认作品原文'});}
     return apple;
   })().catch(()=>null);
   try{

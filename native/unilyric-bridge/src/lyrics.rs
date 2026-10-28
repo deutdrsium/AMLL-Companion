@@ -4,6 +4,31 @@ use serde_json::{json, Value};
 use std::io::Read;
 use base64::Engine;
 
+fn kuwo_lrc(rows: &[Value]) -> String {
+    let entries: Vec<(f64, &str)> = rows.iter().filter_map(|row| {
+        let time = row["time"].as_str()?.parse::<f64>().ok()?;
+        (time.is_finite() && time >= 0.0).then_some((time, row["lineLyric"].as_str()?))
+    }).collect();
+    let notice = |text: &str| (text.contains("歌词翻译") || text.contains("歌詞翻譯")) && text.contains("提供");
+    let format = |time: f64, text: &str| format!("[{:02}:{:06.3}]{}", (time / 60.0) as u64, time % 60.0, text);
+    if let Some(index) = entries.iter().position(|(_, text)| notice(text)) {
+        let body = &entries[index + 1..];
+        // This Kuwo format timestamps each translation with the NEXT original line.
+        let links: Vec<_> = body.chunks(2).collect();
+        let shifted = links.len() >= 3 && links.windows(2).all(|pair|
+            pair[0].len() == 2 && (pair[0][1].0 - pair[1][0].0).abs() < 0.011);
+        if shifted {
+            let mut output: Vec<String> = entries[..index].iter().map(|(time,text)| format(*time,text)).collect();
+            for pair in links {
+                output.push(format(pair[0].0, pair[0].1));
+                if let Some((_, translation)) = pair.get(1) { output.push(format(pair[0].0, translation)); }
+            }
+            return output.join("\n");
+        }
+    }
+    entries.iter().filter(|(_,text)| !notice(text)).map(|(time,text)| format(*time,text)).collect::<Vec<_>>().join("\n")
+}
+
 async fn catalogue(input: &Value) -> Result<Value, Box<dyn std::error::Error>> {
     let provider = input["provider"].as_str().ok_or("Missing provider")?;
     let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10))
@@ -43,11 +68,7 @@ async fn catalogue(input: &Value) -> Result<Value, Box<dyn std::error::Error>> {
             .send().await?.error_for_status()?.text().await?;
         let result: Value = serde_json::from_str(&text)?;
         let rows = result["data"]["lrclist"].as_array().ok_or("酷我此版本没有歌词")?;
-        rows.iter().filter_map(|r| {
-            let time = r["time"].as_str()?.parse::<f64>().ok()?;
-            if !time.is_finite() || time < 0.0 { return None; }
-            Some(format!("[{:02}:{:05.2}]{}",(time/60.0) as u64,time%60.0,r["lineLyric"].as_str()?))
-        }).collect::<Vec<_>>().join("\n")
+        kuwo_lrc(rows)
     } else {
         migu_text(&client, data["lyric_url"].as_str().ok_or("咪咕此版本没有歌词")?).await?
     };
@@ -62,6 +83,38 @@ async fn catalogue(input: &Value) -> Result<Value, Box<dyn std::error::Error>> {
         }
     }
     Ok(amll(parsed))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn kuwo_shifted_translation_rows_follow_the_previous_original() {
+        let rows = json!([
+            {"time":"1.0","lineLyric":"以下歌词翻译由测试提供"},
+            {"time":"1.0","lineLyric":"First original"}, {"time":"4.0","lineLyric":"第一句译文"},
+            {"time":"4.0","lineLyric":"Second original"}, {"time":"7.0","lineLyric":"第二句译文"},
+            {"time":"7.0","lineLyric":"Third original"}, {"time":"9.0","lineLyric":"第三句译文"}
+        ]);
+        let parsed = amll(lyrics_helper_lite::parser::parse_lrc(&kuwo_lrc(rows.as_array().unwrap())).unwrap());
+        assert_eq!(parsed["lines"].as_array().unwrap().len(), 3);
+        for (index, expected) in ["第一句译文","第二句译文","第三句译文"].iter().enumerate() {
+            assert_eq!(parsed["lines"][index]["translatedLyric"], *expected);
+            assert!(parsed["lines"][index]["words"][0]["word"].as_str().unwrap().contains("original"));
+        }
+    }
+    #[test]
+    fn kuwo_standard_bilingual_and_plain_rows_keep_their_own_times() {
+        let rows = json!([
+            {"time":"1.0","lineLyric":"First original"},{"time":"1.0","lineLyric":"第一句译文"},
+            {"time":"4.0","lineLyric":"Second original"},{"time":"4.0","lineLyric":"第二句译文"},
+            {"time":"7.0","lineLyric":"Third original"}
+        ]);
+        let parsed=amll(lyrics_helper_lite::parser::parse_lrc(&kuwo_lrc(rows.as_array().unwrap())).unwrap());
+        assert_eq!(parsed["lines"][0]["translatedLyric"],"第一句译文");
+        assert_eq!(parsed["lines"][1]["startTime"],4000);
+        assert_eq!(parsed["lines"][2]["translatedLyric"],"");
+    }
 }
 
 async fn migu_text(client: &reqwest::Client, url: &str) -> Result<String, Box<dyn std::error::Error>> {

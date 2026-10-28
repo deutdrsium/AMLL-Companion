@@ -18,11 +18,9 @@ export function catalogueIdentity(rows,music){
   if(music.duration>0){if(valid.some(r=>!(r.trackTimeMillis>0)||Math.abs(r.trackTimeMillis-music.duration)>3000))return null;}
   else if(!music.albumName||!valid.some(r=>same(r.collectionName,music.albumName)))return null;
   // Storefront country is availability, not evidence of the recording's original release region.
-  const native=(key,original)=>valid.find(r=>/[^\u0000-\u024f]/u.test(r[key]))?.[key]||original;
-  const title=native('trackName',music.musicName), artist=native('artistName',music.artists.join(' / '));
-  return {...music,musicName:title,artists:[artist],
-    titleAliases:unique([...musicTitles(music),...valid.map(r=>r.trackName)]).filter(t=>t!==title),
-    artistAliases:unique([...musicArtists(music),...valid.map(r=>r.artistName)]).filter(a=>a!==artist),
+  return {...music,
+    titleAliases:unique([...musicTitles(music),...valid.map(r=>r.trackName)]).filter(t=>t!==music.musicName),
+    artistAliases:unique([...musicArtists(music),...valid.map(r=>r.artistName)]).filter(a=>!music.artists.includes(a)),
     metadataAppleTrackId:valid[0].trackId};
 }
 export async function resolveCatalogueAliases(music,signal,request){

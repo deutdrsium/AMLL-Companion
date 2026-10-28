@@ -10,3 +10,5 @@ Local changes to lyrics_helper_lite:
 - Add QQ request comm parameters during compatibility investigation. QQ is not enabled in the app: live probes returned empty results for known songs.
 
 The companion uses the upstream Netease search, YRC/LRC parsers, translation merge, and core lyric model. The Kugou adapter lives in unilyric-bridge/src/lyrics.rs and uses public catalogue search and hash-linked LRC lookup. It does not download audio. SMTC code is unchanged by these additions.
+
+Companion adapter (0.6.11): the Kuwo adapter verifies its translation-provider marker and next-line timestamp pattern before re-associating shifted translation rows with the preceding original. Standard bilingual LRC and plain rows keep their existing timestamps. Native synthetic tests cover both formats.

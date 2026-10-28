@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {metadataFromRecording,resolveMetadata,createMetadataLookup,saveCorrection,readCorrections,correctedMusic,releaseRegion} from '../shared/metadata.mjs';
+import {metadataFromRecording,resolveMetadata,createMetadataLookup,saveCorrection,readCorrections,correctedMusic,releaseRegion,correctionKey} from '../shared/metadata.mjs';
 import {catalogueIdentity,resolveCatalogueAliases} from '../shared/catalogue-metadata.mjs';
 import {bestMatch} from '../shared/matching.mjs';
 import {findLyrics} from '../shared/lyrics-search.mjs';
@@ -115,7 +115,7 @@ const appleJP={kind:'song',trackId:1775580978,artistId:968420440,collectionId:17
 const appleUS={...appleJP,trackName:'Spica',artistName:'Mone Kamishiraishi',collectionName:'Kibi',country:'USA'};
 test('Apple regional names require the same track, artist and album IDs, not merely a similar duration',()=>{
  const result=catalogueIdentity([appleJP,appleUS],spica);
- assert.equal(result.musicName,'スピカ');assert.ok(result.titleAliases.includes('Spica'));
+ assert.equal(result.musicName,'Spica');assert.ok(result.titleAliases.includes('スピカ'));
  assert.ok(result.artistAliases.includes('Mone Kamishiraishi'));
  assert.equal(result.metadataReleaseRegion,undefined);
  assert.equal(catalogueIdentity([appleJP,{...appleUS,trackId:99}],spica),null);
@@ -125,13 +125,13 @@ test('Apple regional names require the same track, artist and album IDs, not mer
  assert.equal(catalogueIdentity([appleJP,appleUS],{...spica,duration:100000}),null);
  assert.equal(catalogueIdentity([appleJP,appleUS],{...spica,duration:0,albumName:'Other'}),null);
 });
-test('release language wins over the current script, without substituting an artist nationality for release evidence',()=>{
+test('release locale never overrides the canonical recording name',()=>{
  const regional={...record,title:'English Title',aliases:[{name:'原文曲名',locale:'ja',primary:true}],
   releases:[{title:music.albumName,status:'Official',country:'JP',date:'2024-01-01','text-representation':{language:'jpn'}},
    {title:music.albumName,status:'Pseudo-Release',country:'US',date:'2023-01-01'}]};
  const result=metadataFromRecording(regional,{...music,musicName:'English Title'});
- assert.equal(result.musicName,'原文曲名');assert.equal(result.metadataReleaseRegion,'JP');
- assert.equal(result.metadataRegionBasis,'matched-release');
+ assert.equal(result.musicName,'English Title');assert.equal(result.metadataReleaseRegion,'JP');
+ assert.equal(result.metadataRegionBasis,'earliest-known-release');
  const worldwide=releaseRegion({...regional,releases:[{title:music.albumName,country:'XW'}]},music);
  assert.equal(worldwide.metadataReleaseRegion,'');assert.equal(worldwide.metadataReleaseLocale,'');
  const uncertain=releaseRegion({...regional,releases:[{title:music.albumName,country:'CA'},{title:music.albumName,country:'FR'}]},music);
@@ -174,6 +174,40 @@ test('Apple names can publish while the first MusicBrainz query is still pending
   catalogueLookup:async url=>({results:[new URL(url).pathname==='/search'?appleJP:appleUS]}),
   onUpdate:notify,
  });
- assert.equal((await visible).music.musicName,'スピカ');release();
- assert.equal((await pending).music.musicName,'スピカ');
+ assert.equal((await visible).music.musicName,'Spica');release();
+ assert.equal((await pending).music.musicName,'Spica');
+});
+
+test('Journey keeps canonical English names despite Japanese storefront names and later Japanese releases',()=>{
+ const journey={...music,musicName:"Don't Stop Believin'",artists:['Journey'],albumName:'Escape (2022 Remaster)',duration:248000};
+ const us={kind:'song',trackId:1,artistId:2,collectionId:3,trackName:journey.musicName,artistName:'Journey',collectionName:journey.albumName,trackTimeMillis:248000};
+ const jp={...us,trackName:'ドント・ストップ・ビリーヴィン',artistName:'ジャーニー'};
+ const aliases=catalogueIdentity([us,jp],journey);
+ assert.equal(aliases.musicName,journey.musicName);assert.deepEqual(aliases.artists,['Journey']);
+ assert.ok(aliases.titleAliases.includes(jp.trackName));assert.ok(aliases.artistAliases.includes(jp.artistName));
+ const original={...record,title:journey.musicName,length:248000,
+  aliases:[{name:jp.trackName,locale:'ja',primary:true}],
+  releases:[{title:'Escape',country:'US',date:'1981-07-17',status:'Official'},
+   {title:journey.albumName,country:'JP',date:'2022-01-01',status:'Official','text-representation':{language:'jpn'}}],
+  'artist-credit':[{name:'Journey',artist:{id:artistId,name:'Journey',aliases:[{name:jp.artistName,locale:'ja',primary:true}]}}]};
+ const result=metadataFromRecording(original,journey);
+ assert.equal(result.musicName,journey.musicName);assert.deepEqual(result.artists,['Journey']);
+ assert.equal(result.metadataReleaseRegion,'US');assert.equal(result.metadataReleaseLocale,'en');
+});
+test('a precise Japanese date cannot outrank an uncertain same-year US release or a worldwide release',()=>{
+ const releases=[{title:'Album',country:'JP',date:'1981-07-17'},{title:'Album',country:'US',date:'1981'}];
+ const result=releaseRegion({releases},music);
+ assert.equal(result.metadataReleaseRegion,'');assert.deepEqual([...result.metadataReleaseCountries].sort(),['JP','US']);
+ assert.equal(releaseRegion({releases:[...releases,{country:'XW',date:'1981-01-01'}]},music).metadataReleaseRegion,'');
+});
+
+test('obsolete localized-name cache is ignored and remaster albums still disambiguate the canonical recording',async()=>{
+ const input={...music,albumName:'Starry Starry (2022 Remaster)'};
+ const store=storage();store.setItem('metadata-alias-cache-v2',JSON.stringify([{key:correctionKey(input)+':257301',expires:Date.now()+86400000,
+  metadata:{musicName:'誤った名前',artists:['誤った歌手'],titleAliases:[],artistAliases:[]}}]));
+ let calls=0;
+ const wrong=Array.from({length:5},(_,i)=>({...record,id:`33333333-3333-4333-8333-33333333333${i}`,releases:[{title:'Other album'}]}));
+ const result=await resolveMetadata(input,signal(),{storage:store,lookup:async url=>{calls++;return new URL(url).searchParams.has('query')?{recordings:[...wrong,record]}:record;}});
+ assert.ok(calls>=2);assert.equal(result.music.musicName,'Starry Starry');assert.deepEqual(result.music.artists,['一二三']);
+ assert.ok(store.getItem('metadata-alias-cache-v3'));
 });

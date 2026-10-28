@@ -28,5 +28,6 @@ const corrected=await resolveMetadata(spica,new AbortController().signal,{lookup
 assert.equal(corrected.music.musicName,'スピカ',corrected.message);
 assert.ok(corrected.music.titleAliases.includes('Spica'));
 assert.ok(corrected.music.artistAliases.includes('Mone Kamishiraishi'));
-assert.equal(corrected.music.metadataReleaseRegion,'JP');
-console.log('PASS real regional release metadata: Spica → スピカ, JP release verified, aliases='+JSON.stringify(corrected.music));
+assert.equal(corrected.music.metadataReleaseRegion,'');
+assert.equal(corrected.music.metadataReleaseLocale,'ja');
+console.log('PASS real regional release metadata: Spica → スピカ, canonical Japanese name retained without forcing an uncertain earliest release region to JP, aliases='+JSON.stringify(corrected.music));
