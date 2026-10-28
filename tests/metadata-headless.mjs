@@ -77,7 +77,7 @@ try{
  await page.waitForFunction(()=>document.querySelector('.lyric-player')?.textContent.includes('First sung line'));
  assert.equal(await page.evaluate(()=>window.fakeState.music.musicName),'Spica');
  await page.locator('.metadata-editor summary').click();
- assert.ok((await page.locator('.metadata-editor').innerText()).includes('JP'));
+ await page.waitForFunction(()=>document.querySelector('.metadata-editor')?.textContent.includes('JP'));
  assert.ok((await page.locator('.metadata-editor').innerText()).includes('Spica'));
  const titles=await page.evaluate(()=>window.fakeCalls.filter(r=>r.provider==='netease'&&r.operation==='search').map(r=>r.data.title));
  assert.ok(titles.includes('Spica')&&titles.includes('スピカ'));

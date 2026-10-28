@@ -37,10 +37,10 @@ export function compareLyrics(a, b) {
   for (let i = 0; i < qa.length; i++) if (qa[i] !== qb[i]) return qb[i] - qa[i];
   return 0; // Stable order preserves metadata preference when quality is equal.
 }
-export async function resolveBest(candidates, resolve, signal) {
+export async function resolveBest(candidates, resolve, signal, onResolved) {
   // Bound downloads to the three closest compatible catalogue entries per source.
   const results = await Promise.all(candidates.slice(0, 3).map(async song => {
-    try { song.resolvedLyrics = await resolve(song, signal); return song; }
+    try { song.resolvedLyrics = await resolve(song, signal); signal.throwIfAborted(); onResolved?.(song); return song; }
     catch { signal.throwIfAborted(); return null; }
   }));
   signal.throwIfAborted();

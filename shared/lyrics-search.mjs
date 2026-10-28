@@ -1,6 +1,7 @@
 import { artistNames, bestMatch, simplify, musicTitles } from "./matching.mjs";
+import {eachSearchQuery} from './search-work.mjs';
 
-export async function findLyrics(music, request, signal) {
+export async function findLyrics(music, request, signal, onProgress) {
   const items = new Map();
   const seen = new Set();
   const titles = musicTitles(music);
@@ -8,10 +9,11 @@ export async function findLyrics(music, request, signal) {
   const queries = titles.flatMap(musicName => [
     ...artists.map(artistName => ({ musicName, artistName })), { musicName },
   ]);
-  let succeeded=false, failure;
-  for (const query of queries) {
+  let succeeded=false, failure,complete=false;
+  await eachSearchQuery(queries,signal,async query=>{
+    if(complete)return;
     const key = JSON.stringify(query);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return;
     seen.add(key);
     let page = 1;
     while (true) {
@@ -27,12 +29,13 @@ export async function findLyrics(music, request, signal) {
       const match = bestMatch(all, music);
       // Read every page for this query before deciding whether recordings are ambiguous.
       if (!result.pagination?.hasMore) {
-        if (match && !music.artistAliases?.length && !music.titleAliases?.length) return { items: all, match };
+        if (match && !music.artistAliases?.length && !music.titleAliases?.length) complete=true;
+        await onProgress?.({items:all,match});
         break;
       }
       page++;
     }
-  }
+  });
   const all = [...items.values()];
   if(!succeeded&&failure)throw failure;
   return { items: all, match: bestMatch(all, music) };

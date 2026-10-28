@@ -167,3 +167,13 @@ test('every confirmed title and artist name is queried and later query failures 
  });
  assert.equal(queries.length,25);assert.ok(queries.some(q=>q.includes('Alias 4')));assert.ok(result.match);
 });
+test('Apple names can publish while the first MusicBrainz query is still pending',async()=>{
+ let release,first=true,notify;const visible=new Promise(r=>notify=r);
+ const pending=resolveMetadata(spica,signal(),{storage:storage(),
+  lookup:async()=>{if(first){first=false;return new Promise(r=>release=()=>r({recordings:[]}));}return {recordings:[]};},
+  catalogueLookup:async url=>({results:[new URL(url).pathname==='/search'?appleJP:appleUS]}),
+  onUpdate:notify,
+ });
+ assert.equal((await visible).music.musicName,'スピカ');release();
+ assert.equal((await pending).music.musicName,'スピカ');
+});

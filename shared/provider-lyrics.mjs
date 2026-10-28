@@ -1,5 +1,6 @@
 import { bestMatch, normalize, simplify, musicTitles, artistQueries } from './matching.mjs';
 import { lyricQuality, resolveBest } from './lyrics-quality.mjs';
+import {eachSearchQuery,memoizeSearchRequest} from './search-work.mjs';
 
 export const providerNames = { kugou: '酷狗音乐', netease: '网易云音乐', qq: 'QQ 音乐', kuwo: '酷我音乐', migu: '咪咕音乐', web: '网页 LRC', lrclib: 'LRCLIB', amll: 'AMLL' };
 export const catalogueProviders = ['netease', 'kugou', 'qq', 'kuwo', 'migu'];
@@ -61,18 +62,29 @@ export function hasLyricContent(lines, song) {
       || (song.artistNames || []).some(artist => creditName(text) === creditName(`${title}${artist}`)));
   });
 }
-export async function searchProvider(provider, music, signal, request = providerRequest) {
+export async function searchProvider(provider, music, signal, request = providerRequest, onProgress) {
+  request=memoizeSearchRequest(request);
   const found=new Map(),seen=new Set();let succeeded=false,failure;
+  const queries=[];
   for (const title of musicTitles(music)) for (const artists of artistQueries(music)) {
     signal.throwIfAborted();
     const data={title,artists:artists.map(simplify),album:music.albumName||null,duration:music.duration||null};
     const key=JSON.stringify([title.normalize('NFKC').toLowerCase(),data.artists.map(a=>a.normalize('NFKC').toLowerCase())]);
     if(seen.has(key))continue;seen.add(key);
+    queries.push(data);
+  }
+  await eachSearchQuery(queries,signal,async data=>{
     try{
       const rows=await request(provider,'search',data,signal);succeeded=true;
       for(const song of compatibleSongs(rows,provider,music))found.set(song.id,song);
+      if(onProgress){
+        const items=[...found.values()].sort(recordingOrder(music));
+        onProgress({items,match:null});
+        await resolveBest(items.filter(s=>canAutoSelect(s,music)),
+          (song,s)=>getProviderLyrics(song,s,request),signal,match=>onProgress({items,match}));
+      }
     }catch(error){signal.throwIfAborted();failure=error;}
-  }
+  });
   if(!succeeded&&failure)throw failure;
   const items=[...found.values()].sort(recordingOrder(music));
   const match = await resolveBest(items.filter(s => canAutoSelect(s, music)),

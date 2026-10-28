@@ -2,10 +2,14 @@ import { parseTTML, parseLrc } from "@applemusic-like-lyrics/lyric";
 import type { Song, Music } from "./types";
 import { findLyrics } from "../shared/lyrics-search.mjs";
 import { searchLrclib } from "../shared/lrclib.mjs";
-import { searchProvider, getProviderLyrics, canAutoSelect, catalogueProviders } from '../shared/provider-lyrics.mjs';
+import { searchProvider, getProviderLyrics, canAutoSelect, catalogueProviders, providerRequest } from '../shared/provider-lyrics.mjs';
 import { searchWebLyrics } from '../shared/web-lyrics.mjs';
-import { compareLyrics, lyricQuality, resolveBest, amllCandidates } from '../shared/lyrics-quality.mjs';
+import { lyricQuality, resolveBest, amllCandidates } from '../shared/lyrics-quality.mjs';
 import {resolveMetadata} from '../shared/metadata.mjs';
+import {searchProgressively} from '../shared/lyrics-pipeline.mjs';
+import {memoizeSearchRequest} from '../shared/search-work.mjs';
+import {lrclibRows} from '../shared/lyrics-http.mjs';
+export type SearchResult={items:Song[];match:Song|null;warning?:string};
 const base = "https://api.amll.dev/v1/lyrics";
 const cache = new Map<number | string, Song>();
 async function request(
@@ -31,46 +35,35 @@ async function request(
 export async function searchLyrics(
   music: Music,
   signal: AbortSignal,
-  options: {manual?: boolean; onMetadata?: (result:{music:Music;message:string})=>void} = {},
+  options: {manual?: boolean; onMetadata?: (result:{music:Music;message:string})=>void;onProgress?:(result:SearchResult)=>void} = {},
 ): Promise<{ items: Song[]; match: Song | null; warning?: string }> {
-  const metadata=options.manual?{music,message:'已使用手动纠正的检索信息'}:await resolveMetadata(music,signal);
-  signal.throwIfAborted();music=metadata.music;
-  options.onMetadata?.(metadata);
-  const results = await Promise.allSettled([
-    (async () => {
-      const result = await findLyrics(music, request, signal);
-      // Preserve AMLL's recording ambiguity guard before ranking lyric quality.
-      if (result.match) result.match = await resolveBest(amllCandidates(result, music), getLyrics, signal);
-      return result;
-    })(),
-    ...catalogueProviders.map(provider => searchProvider(provider, music, signal)),
-    (async () => {
-      const result = await searchLrclib(music, signal);
-      result.match = await resolveBest(result.items.filter(s => canAutoSelect(s, music)), getLyrics, signal);
-      return result;
-    })(),
-  ]);
-  signal.throwIfAborted();
-  const successful = results.flatMap(r => r.status === 'fulfilled' ? [r.value] : []);
-  const items = successful.flatMap(r => r.items) as Song[];
-  const matches = successful.flatMap(r => r.match ? [r.match] : []) as Song[];
-  matches.sort(compareLyrics);
-  items.sort(compareLyrics);
-  if (!matches.length) {
-    try {
-      const web = await searchWebLyrics(music, signal);
-      items.push(...web.items as Song[]);
-      if (web.match) return { items, match: web.match as Song };
-    } catch (e) {
-      signal.throwIfAborted();
-      return { items, match: null, warning: e instanceof Error ? e.message : '网页歌词兜底暂不可用' };
-    }
-  }
-  if (!items.length && !successful.length)
-    throw new Error('歌词来源暂时均不可用，请稍后重试');
-  if (!items.length && results.some(r => r.status === 'rejected'))
-    throw new Error('未找到匹配歌词，且部分来源暂不可用，请稍后重试');
-  return { items, match: matches[0] || null };
+  const native=memoizeSearchRequest(providerRequest),amll=memoizeSearchRequest(request),load=memoizeSearchRequest(getLyrics);
+  const rows=memoizeSearchRequest((title:string,s:AbortSignal)=>lrclibRows(title,s));
+  return searchProgressively(music,signal,{
+    metadata:(track:Music,s:AbortSignal,update:(result:{music:Music;message:string})=>void)=>options.manual
+      ?Promise.resolve({music:track,message:'已使用手动纠正的检索信息'})
+      :resolveMetadata(track,s,{onUpdate:update}),
+    onMetadata:options.onMetadata,onProgress:options.onProgress,
+    canPreview:canAutoSelect,
+    sources:[
+      async(track:Music,s:AbortSignal,emit:(result:SearchResult)=>void)=>{
+        const publish=async(result:SearchResult)=>{
+          emit({items:result.items,match:null});
+          // Publish only candidates allowed by the existing AMLL recording ambiguity check.
+          return resolveBest(amllCandidates(result,track),load,s,(match:Song)=>emit({items:result.items,match}));
+        };
+        const result=await findLyrics(track,amll,s,publish);
+        result.match=await publish(result);return result;
+      },
+      ...catalogueProviders.map(provider=>(track:Music,s:AbortSignal,emit:(result:SearchResult)=>void)=>searchProvider(provider,track,s,native,emit)),
+      async(track:Music,s:AbortSignal,emit:(result:SearchResult)=>void)=>{
+        const publish=async(result:SearchResult)=>resolveBest(result.items.filter(song=>canAutoSelect(song,track)),load,s,(match:Song)=>emit({items:result.items,match}));
+        const result=await searchLrclib(track,s,fetch,{rows,onProgress:publish});
+        result.match=await publish(result);return result;
+      },
+    ],
+    web:searchWebLyrics,
+  });
 }
 export async function getLyrics(song: Song, signal: AbortSignal) {
   signal.throwIfAborted();

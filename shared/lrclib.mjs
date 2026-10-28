@@ -1,14 +1,15 @@
 import { bestMatch, normalize, musicTitles } from './matching.mjs';
 import { lrclibRows } from './lyrics-http.mjs';
 import { canAutoSelect } from './provider-lyrics.mjs';
+import {eachSearchQuery} from './search-work.mjs';
 
-export async function searchLrclib(music, signal, fetcher = fetch) {
+export async function searchLrclib(music, signal, fetcher = fetch, options={}) {
   const items = new Map();
   let succeeded=false,failure;
-  for (const title of musicTitles(music)) {
+  await eachSearchQuery(musicTitles(music),signal,async title=>{
     signal.throwIfAborted();
     let rows;
-    try{rows=await lrclibRows(title,signal,fetcher);succeeded=true;}catch(error){signal.throwIfAborted();failure=error;continue;}
+    try{rows=await (options.rows?options.rows(title,signal):lrclibRows(title,signal,fetcher));succeeded=true;}catch(error){signal.throwIfAborted();failure=error;return;}
     for (const row of rows) {
       if (!Number.isSafeInteger(row.id) || row.id <= 0 || typeof row.syncedLyrics !== 'string' || !row.syncedLyrics.trim()
         || ![row.trackName, row.artistName, row.albumName].every(v => typeof v === 'string')
@@ -17,7 +18,8 @@ export async function searchLrclib(music, signal, fetcher = fetch) {
         albumNames: [row.albumName], duration: row.duration * 1000, lyrics: row.syncedLyrics };
       if (bestMatch([song], music)) items.set(song.id, song);
     }
-  }
+    await options.onProgress?.({items:[...items.values()],match:null});
+  });
   const all = [...items.values()];
   if(!succeeded&&failure)throw failure;
   const albumKey = text => normalize(text.replace(/\s*[\[（(][^\]）)]*[\]）)]\s*$/, ''));

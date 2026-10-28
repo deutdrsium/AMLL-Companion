@@ -145,19 +145,31 @@ export async function resolveMetadata(music,signal,options={}){
   const hit=cached.find(e=>e.key===key);
   if(hit)return {music:{...music,...hit.metadata},message:metadataMessage(hit.metadata)+'（缓存）'};
   if(!music.artists.length)return {music,message:''};
-  let result=await recordingMetadata(music,signal,request,cached), base=music;
-  if(!result.metadata){
-    try{
-      const apple=await resolveCatalogueAliases(music,AbortSignal.any([signal,AbortSignal.timeout(20000)]),options.catalogueLookup||options.lookup||catalogueLookup);
-      signal.throwIfAborted();
+  const stopCatalogue=new AbortController();let earlyApple=null;
+  const appleSignal=AbortSignal.any([signal,stopCatalogue.signal,AbortSignal.timeout(20000)]);
+  // Give a fast MusicBrainz answer a head start; its timeouts must not postpone Apple name recovery.
+  const appleTask=(async()=>{
+    await pause(800,appleSignal);
+    const apple=await resolveCatalogueAliases(music,appleSignal,options.catalogueLookup||options.lookup||catalogueLookup);
+    appleSignal.throwIfAborted();
+    if(apple){earlyApple=apple;options.onUpdate?.({music:apple,message:'已核对歌曲原文，正在补全发行信息'});}
+    return apple;
+  })().catch(()=>null);
+  try{
+    let result=await recordingMetadata(music,signal,request,cached),base=music;
+    if(result.metadata){
+      stopCatalogue.abort();
+      if(earlyApple){base=earlyApple;result.metadata.titleAliases=names([...result.metadata.titleAliases,...musicTitles(earlyApple)]).filter(t=>t!==result.metadata.musicName);
+        result.metadata.artistAliases=names([...result.metadata.artistAliases,...musicArtists(earlyApple)]).filter(a=>!result.metadata.artists.includes(a));}
+    }else{
+      const apple=await appleTask;signal.throwIfAborted();
       if(apple){base=apple;const enriched=await recordingMetadata(apple,signal,request,cached);
-        result=enriched.metadata?enriched:{metadata:{musicName:apple.musicName,artists:apple.artists,titleAliases:apple.titleAliases,artistAliases:apple.artistAliases}};
-      }
-    }catch{signal.throwIfAborted();}
-  }
-  if(!result.metadata)return {music,message:result.message};
-  const metadata={...result.metadata,...(base.metadataAppleTrackId?{metadataAppleTrackId:base.metadataAppleTrackId}:{})};
-  signal.throwIfAborted();
-  write(storage,cacheKey,[...cached.filter(e=>e.key!==key),{key,expires:Date.now()+30*86400000,metadata}].slice(-100));
-  return {music:{...music,...metadata},message:metadataMessage(metadata)};
+        result=enriched.metadata?enriched:{metadata:{musicName:apple.musicName,artists:apple.artists,titleAliases:apple.titleAliases,artistAliases:apple.artistAliases}};}
+    }
+    if(!result.metadata)return {music,message:result.message};
+    const metadata={...result.metadata,...(base.metadataAppleTrackId?{metadataAppleTrackId:base.metadataAppleTrackId}:{})};
+    signal.throwIfAborted();
+    write(storage,cacheKey,[...cached.filter(e=>e.key!==key),{key,expires:Date.now()+30*86400000,metadata}].slice(-100));
+    return {music:{...music,...metadata},message:metadataMessage(metadata)};
+  }finally{stopCatalogue.abort();}
 }
