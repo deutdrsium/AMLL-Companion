@@ -37,3 +37,21 @@ test('candidate details explicitly report present and absent lyric features',()=
  assert.match(description,/对唱：无/);assert.match(description,/2 行/);
  assert.match(lyricDetails([line(false)]),/^逐行/);
 });
+
+ test('all candidates are compared with bounded downloads and immediate first publication',async()=>{
+ const candidates=Array.from({length:9},(_,id)=>({id}));let active=0,peak=0;const seen=[];
+ const result=await resolveBest(candidates,async s=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,2));active--;return {lines:[line(s.id===8)]};},new AbortController().signal,s=>seen.push(s.id));
+ assert.equal(result.id,8);assert.equal(seen.length,9);assert.equal(peak,3);
+ });
+ test('translation supplementation preserves timing, existing translations and original inputs',async()=>{
+ const {supplementTranslations}=await import('../shared/lyrics-quality.mjs');
+ const base=song('word',[line(true,'original'),line(true)]);base.resolvedLyrics.source='Words';base.resolvedLyrics.authors='Author';
+ const donor=song('translation',[line(false,'other'),line(false,'second')]);donor.resolvedLyrics.source='Lines';
+ const merged=supplementTranslations(base,[donor]);
+ assert.deepEqual(merged.resolvedLyrics.lines.map(l=>l.translatedLyric),['original','second']);
+ assert.deepEqual(merged.resolvedLyrics.lines.map(l=>l.words),base.resolvedLyrics.lines.map(l=>l.words));
+ assert.equal(base.resolvedLyrics.lines[1].translatedLyric,'');assert.match(merged.resolvedLyrics.source,/翻译补全：Lines/);
+ assert.equal(supplementTranslations(base,[song('short',[line(false,'x')])]),base);
+ const wrong=song('wrong',[line(false,'x'),{...line(false,'y'),words:[{word:'different'}]}]);
+ assert.equal(supplementTranslations(base,[wrong]),base);
+ });

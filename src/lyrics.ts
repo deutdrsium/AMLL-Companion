@@ -53,13 +53,14 @@ export async function searchLyrics(
           return resolveBest(amllCandidates(result,track),load,s,(match:Song)=>emit({items:result.items,match}));
         };
         const result=await findLyrics(track,amll,s,publish);
-        result.match=await publish(result);return result;
+        const eligible=amllCandidates(result,track);
+        result.match=await publish(result);return {...result,eligible:eligible.filter((song:Song)=>song.resolvedLyrics)};
       },
       ...catalogueProviders.map(provider=>(track:Music,s:AbortSignal,emit:(result:SearchResult)=>void)=>searchProvider(provider,track,s,native,emit)),
       async(track:Music,s:AbortSignal,emit:(result:SearchResult)=>void)=>{
         const publish=async(result:SearchResult)=>resolveBest(result.items.filter(song=>canAutoSelect(song,track)),load,s,(match:Song)=>emit({items:result.items,match}));
         const result=await searchLrclib(track,s,fetch,{rows,onProgress:publish});
-        result.match=await publish(result);return result;
+        result.match=await publish(result);return {...result,eligible:result.items.filter((song:Song)=>canAutoSelect(song,track)&&song.resolvedLyrics)};
       },
     ],
     web:searchWebLyrics,

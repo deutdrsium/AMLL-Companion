@@ -62,3 +62,15 @@ test('one slow candidate download does not delay another validated lyric from th
  },result=>{if(result.match)first.resolve(result.match);});
  assert.equal((await first.promise).id,'netease:fast');slow.resolve();await pending;assert.equal(calls,2);
 });
+
+test('final selection combines translations from every eligible version, never unrelated items',async()=>{
+ const word={id:'word',resolvedLyrics:{source:'word source',lines:[{...line,words:[{word:'First ',startTime:1000,endTime:2000},{word:'lyric',startTime:2000,endTime:3000}]}]}};
+ const donor={id:'donor',resolvedLyrics:{source:'translation source',lines:[{...line,translatedLyric:'正确翻译'}]}};
+ const unrelated={id:'unrelated',resolvedLyrics:{lines:[{...line,translatedLyric:'错误翻译'}]}};
+ const result=await searchProgressively(music,new AbortController().signal,{
+  metadata:async()=>({music}),sources:[async()=>({items:[word],eligible:[word],match:word}),async()=>({items:[unrelated,donor],eligible:[donor],match:donor})],web:async()=>{throw Error('unexpected');},
+ });
+ assert.equal(result.match.id,'word');assert.equal(result.match.resolvedLyrics.lines[0].translatedLyric,'正确翻译');
+ assert.match(result.match.resolvedLyrics.source,/translation source/);assert.equal(word.resolvedLyrics.lines[0].translatedLyric,undefined);
+ assert.equal(result.items.find(s=>s.id==='word').resolvedLyrics.lines[0].translatedLyric,'正确翻译');
+});

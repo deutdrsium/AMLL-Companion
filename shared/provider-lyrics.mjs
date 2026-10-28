@@ -89,5 +89,5 @@ export async function searchProvider(provider, music, signal, request = provider
   const items=[...found.values()].sort(recordingOrder(music));
   const match = await resolveBest(items.filter(s => canAutoSelect(s, music)),
     (song, signal) => getProviderLyrics(song, signal, request), signal);
-  return { items, match };
+  return { items, match, eligible:items.filter(s=>canAutoSelect(s,music)&&s.resolvedLyrics) };
 }

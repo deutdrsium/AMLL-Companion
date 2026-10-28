@@ -38,11 +38,38 @@ export function compareLyrics(a, b) {
   return 0; // Stable order preserves metadata preference when quality is equal.
 }
 export async function resolveBest(candidates, resolve, signal, onResolved) {
-  // Bound downloads to the three closest compatible catalogue entries per source.
-  const results = await Promise.all(candidates.slice(0, 3).map(async song => {
-    try { song.resolvedLyrics = await resolve(song, signal); signal.throwIfAborted(); onResolved?.(song); return song; }
-    catch { signal.throwIfAborted(); return null; }
+  // Keep the first three downloads immediate, then drain every compatible version.
+  const unique=[...new Map(candidates.map(song=>[song.id,song])).values()];
+  const results=new Array(unique.length);let cursor=0;
+  await Promise.all(Array.from({length:Math.min(3,unique.length)},async()=>{
+    while(cursor<unique.length){
+      signal.throwIfAborted();const index=cursor++,song=unique[index];
+      try { song.resolvedLyrics = await resolve(song, signal); signal.throwIfAborted(); onResolved?.(song); results[index]=song; }
+      catch { signal.throwIfAborted(); }
+    }
   }));
   signal.throwIfAborted();
   return results.filter(Boolean).sort(compareLyrics)[0] || null;
+}
+
+// Donors must already pass recording matching. Equal counts alone cannot prove line correspondence.
+export function supplementTranslations(song, donors) {
+  const base=song.resolvedLyrics;
+  if(!base||!lyricQuality(base.lines)[0])return song;
+  const main=lines=>lines.filter(l=>!l.isBG&&l.words?.some(w=>w.word?.trim()));
+  const target=main(base.lines), text=line=>normalize(line.words.map(w=>w.word).join(''));
+  const lines=base.lines.map(line=>({...line})), output=main(lines),sources=new Set(),authors=new Set();
+  for(const donor of [...donors].sort(compareLyrics)){
+    if(donor.id===song.id||!donor.resolvedLyrics)continue;
+    const from=main(donor.resolvedLyrics.lines);
+    if(from.length!==target.length||from.some((line,i)=>text(line)!==text(target[i])))continue;
+    let used=false;
+    from.forEach((line,i)=>{if(!output[i].translatedLyric?.trim()&&line.translatedLyric?.trim()){
+      output[i].translatedLyric=line.translatedLyric;used=true;
+    }});
+    if(used){sources.add(donor.resolvedLyrics.source||String(donor.id));authors.add(donor.resolvedLyrics.authors||donor.resolvedLyrics.source||String(donor.id));}
+  }
+  if(!sources.size)return song;
+  return {...song,resolvedLyrics:{...base,lines,source:`${base.source} · 翻译补全：${[...sources].join('、')}`,
+    authors:[base.authors,`翻译补全：${[...authors].join('、')}`].filter(Boolean).join(' · ')}};
 }

@@ -64,7 +64,7 @@ internal static class WebLyricsHttp
             },
         };
         var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(12) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("AMLL-Companion/0.6.5 (+https://github.com/deutdrsium/AMLL-Companion)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("AMLL-Companion/0.6.6 (+https://github.com/deutdrsium/AMLL-Companion)");
         return client;
     }
     internal static Uri ValidateUrl(string value)
