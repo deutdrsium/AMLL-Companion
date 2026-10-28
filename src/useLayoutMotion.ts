@@ -18,8 +18,10 @@ export function useLayoutMotion(width: number, height: number, mini: boolean, fo
       if (before && mode.current !== nextMode && !reduceMotion && !matchMedia('(prefers-reduced-motion: reduce)').matches
           && before.width && before.height && rect.width && rect.height) {
         const base = getComputedStyle(element).transform;
+        // AMLL measures glyph widths during resize; ancestor scaling would cache extra line breaks.
+        const scale = element.matches('.lyrics-panel') ? '' : `scale(${before.width/rect.width}, ${before.height/rect.height})`;
         animations.current.push(element.animate([
-          {transform: `translate(${before.x-rect.x}px, ${before.y-rect.y}px) scale(${before.width/rect.width}, ${before.height/rect.height}) ${base === 'none' ? '' : base}`},
+          {transform: `translate(${before.x-rect.x}px, ${before.y-rect.y}px) ${scale} ${base === 'none' ? '' : base}`},
           {transform: base},
         ], {duration: 360, easing: 'cubic-bezier(.22, 1, .36, 1)'}));
       }
