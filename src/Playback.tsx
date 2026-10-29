@@ -208,7 +208,7 @@ export function LiveLyrics({
       enableBlur={!reduceMotion}
       enableScale={!reduceMotion}
       alignAnchor={compact ? 'top' : 'center'}
-      alignPosition={compact ? 0.02 : 0.42}
+      alignPosition={compact ? 0.3 : 0.42}
       onLyricLineClick={(e) => seek(e.line.getLine().startTime - offset)}
       bottomLine={compact ? undefined : <small className="credits">歌词贡献 · {authors}</small>}
     />

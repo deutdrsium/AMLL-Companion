@@ -1,0 +1,87 @@
+.glass-filters { position: absolute; width: 0; height: 0; pointer-events: none; }
+.glass-surface {
+  --glass-blur: 14px;
+  background: linear-gradient(150deg,#ffffff16,#ffffff03 48%,#ffffff0c),#24222e99;
+  border: 1px solid #ffffff26;
+  border-radius: 24px;
+  corner-shape: superellipse(1.5);
+  backdrop-filter: var(--glass-refraction,blur(0px)) blur(var(--glass-blur)) saturate(1.25);
+  box-shadow: inset 0 1px 0 #ffffff45,inset 0 -1px 0 #ffffff0b,0 8px 24px #09061524;
+}
+.glass-surface:not(dialog) { position: relative; }
+.glass-surface::before {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; corner-shape: inherit;
+  padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg,#ffffff68,transparent 28%,#ffffff0b 65%,#ffffff38);
+  mask: linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.glass-surface::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; corner-shape: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse at var(--glass-light-x,25%) var(--glass-light-y,0%),#ffffff1c,transparent 65%);
+}
+.titlebar { background: transparent; border-bottom: none; }
+.titlebar .top-actions.glass-surface { height: 34px; gap: 2px; padding: 1px 5px; border-radius: 18px; }
+.titlebar .top-actions .icon { border-radius: 13px; }
+.titlebar .connection { border: none; background: transparent; color: #fff; }
+.transport.glass-surface { padding: 3px 10px; border-radius: 38px; }
+.transport .play { background: #ffffff14; box-shadow: inset 0 1px 0 #ffffff24; }
+.transport button { transition: background-color .16s,transform .16s; }
+.transport button:not(:disabled):active { transform: scale(.94); }
+dialog.glass-surface {
+  --glass-blur: 24px;
+  background: linear-gradient(150deg,#ffffff16,transparent 35%),#211f2cce;
+  border-radius: 30px;
+  box-shadow: inset 0 1px 0 #ffffff55,0 24px 80px #08051060;
+  animation: glass-open .24s cubic-bezier(.2,.8,.2,1);
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff38 transparent;
+}
+dialog.glass-surface::before { inset: 0; }
+dialog::backdrop { background: #0c0a1836; backdrop-filter: blur(5px); }
+.dialog-body { padding: 26px; }
+.dialog-title { margin-bottom: 18px; }
+.dialog-title h2 { font-size: 22px; font-weight: 650; letter-spacing: -.4px; }
+.dialog-title .icon { background: #ffffff0d; border-radius: 50%; }
+.connection-card { background: #ffffff08; border: 1px solid #ffffff0b; border-radius: 18px; }
+dialog .hint,dialog .setting p,dialog .connection-card p { color: #f2edf3b8; }
+dialog .setting { margin-top: 18px; padding-top: 18px; }
+dialog .setting input[type="checkbox"] {
+  appearance: none; width: 42px; height: 25px; flex: 0 0 42px; margin: 0;
+  border: 1px solid #ffffff2a; border-radius: 20px; background: #ffffff24;
+  position: relative; cursor: pointer; transition: background-color .18s;
+}
+dialog .setting input[type="checkbox"]::before {
+  content: ''; position: absolute; width: 19px; height: 19px; left: 2px; top: 2px;
+  border-radius: 50%; background: linear-gradient(#fff,#ebe7ed); box-shadow: 0 1px 4px #0004;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1);
+}
+dialog .setting input[type="checkbox"]:checked { background: #56b68b; border-color: #b7f8d44d; }
+dialog .setting input[type="checkbox"]:checked::before { transform: translateX(17px); }
+dialog select,dialog .metadata-editor input { background: #ffffff0a; border-color: #ffffff20; border-radius: 12px; }
+dialog select option { background: #292735; }
+.candidates { gap: 7px; }
+.candidates button { border: 1px solid transparent; border-radius: 16px; padding: 14px 16px; background: #ffffff07; }
+.candidates button:hover { background: #ffffff13; border-color: #ffffff16; }
+.candidates strong { color: #fff; }
+.candidates span { color: #e5dfeab8; }
+.pill .pill-glass.glass-surface {
+  position: absolute; inset: 0; border: 0; border-radius: inherit; corner-shape: inherit;
+  --glass-blur: 2px;
+  background: linear-gradient(160deg,#ffffff13,transparent 42%,#ffffff07),#15132314;
+  z-index: 0; pointer-events: none;
+  box-shadow: inset 0 1px 1px #ffffff70,inset 0 -1px 1px #ffffff16;
+}
+.pill .pill-glass::before { inset: 0; padding: 1.2px; }
+.pill .pill-lyrics { z-index: 1; }
+.pill .album-background { opacity: .95; }
+.pill .shade { background: linear-gradient(110deg,#15101b24,#100d233d); }
+.pill .pill-tools { background: #25213190; box-shadow: inset 0 1px 0 #ffffff20; }
+.pill.no-background .pill-tools { background: transparent; box-shadow: none; }
+@keyframes glass-open { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { dialog.glass-surface { animation: none; } }
+.reduced-motion dialog.glass-surface { animation: none; }
+@media (forced-colors: active) { .glass-surface { background: Canvas; border-color: ButtonText; backdrop-filter: none; } .glass-surface::before,.glass-surface::after { display: none; } }
+@media (prefers-reduced-transparency: reduce) { .glass-surface { background: #292735; backdrop-filter: none; } }

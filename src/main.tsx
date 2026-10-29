@@ -6,6 +6,7 @@ import "./style.css";
 import "./responsive.css";
 import "./floating.css";
 import "./pill.css";
+import "./glass.css";
 
 startRendererDiagnostics();
 createRoot(document.getElementById("root")!).render(<App />);

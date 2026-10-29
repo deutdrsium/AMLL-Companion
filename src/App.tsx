@@ -38,6 +38,7 @@ import {
   songOffsetKey,
 } from "../shared/clock.mjs";
 import { LiveLyrics, Timeline } from "./Playback";
+import {LiquidGlass} from './LiquidGlass';
 import { useLayoutMotion } from './useLayoutMotion';
 import {MetadataEditor} from './MetadataEditor';
 import {readCorrections,saveCorrection,correctionKey,correctedMusic} from '../shared/metadata.mjs';
@@ -447,6 +448,7 @@ export default function App() {
       <div className="shade" />
       </>}
       {pill&&<>
+        {pillBackground&&<div className="pill-glass glass-surface" aria-hidden="true"/>}
         <div className="pill-lyrics" aria-label="悬浮同步歌词">
           {lines.length?<LiveLyrics compact clock={clock} lines={lines} offset={offset}
             playing={state.playing&&state.connected} reduceMotion={reduceMotion}
@@ -473,7 +475,7 @@ export default function App() {
         <span className="brand">
           <Music2 size={18} fill="currentColor" /> AMLL <span>Companion {version}</span>
         </span>
-        {!mini && <div className="top-actions">
+        {!mini && <div className="top-actions glass-surface">
           <button className="icon" title="悬浮歌词" aria-label="悬浮歌词" onClick={()=>windowAction('lyrics')}><AudioLines size={18}/></button>
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
             <i />{state.connected ? "SMTC 已连接" : "等待播放"}
@@ -579,7 +581,7 @@ export default function App() {
             enabled={ready && state.controls.seek}
             seek={seek}
           />
-          <div className="transport">
+          <div className={`transport ${mini?'':'glass-surface'}`}>
             <button
               className={`icon ${state.shuffle ? "selected" : ""}`}
               aria-label="随机播放"
@@ -718,6 +720,7 @@ export default function App() {
         </section>
       </main>}
       <dialog
+        className="glass-surface"
         ref={dialog}
         onCancel={closeDialog}
         onClick={(e) => {
@@ -850,6 +853,7 @@ export default function App() {
           )}
         </div>
       </dialog>
+      <LiquidGlass layout={`${pill}:${pillBackground}:${settings}:${picker}:${mini}`} reduceMotion={reduceMotion}/>
       {error && (
         <div className="toast" role="alert">
           {error}

@@ -1,7 +1,7 @@
 import {chromium} from 'playwright';
 import {spawn,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
@@ -42,9 +42,30 @@ try{
  });
  await page.reload({waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>document.querySelector('.lyric-player')?.textContent.includes('把所有'));
+ await page.waitForSelector('.top-actions[data-glass-ready="true"]');
+ await mkdir('test-results/glass',{recursive:true});
+ await page.screenshot({path:'test-results/glass/main.png'});
+ await page.getByRole('button',{name:'设置',exact:true}).click();
+ await page.waitForSelector('dialog[open][data-glass-ready="true"]');
+ assert.equal(await page.locator('dialog .glass-surface').count(),0,'Menu rows share a single material rather than stacking glass');
+ assert.match(await page.locator('dialog').evaluate(el=>getComputedStyle(el).backdropFilter),/url\(/,'Menus use live backdrop refraction');
+ assert.ok(await page.locator('dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),'Glass menu must not introduce a horizontal scrollbar');
+ await page.waitForTimeout(300);
+ await page.screenshot({path:'test-results/glass/settings.png'});
+ await page.getByRole('button',{name:'关闭弹窗',exact:true}).click();
+ await page.getByRole('button',{name:'选择歌词版本',exact:true}).click();
+ await page.waitForSelector('dialog[open][data-glass-ready="true"]');
+ await page.waitForTimeout(300);
+ await page.screenshot({path:'test-results/glass/versions.png'});
+ await page.getByRole('button',{name:'关闭弹窗',exact:true}).click();
  await page.getByRole('button',{name:'悬浮歌词',exact:true}).click();
  await page.waitForSelector('.pill .amll-lyric-player');
  await page.waitForTimeout(800);
+ await page.waitForSelector('.pill-glass[data-glass-ready="true"]');
+ assert.match(await page.locator('.pill-glass').evaluate(el=>getComputedStyle(el).backdropFilter),/url\(/,'Pill uses edge refraction over the live album background');
+ const mapsBefore=await page.locator('.glass-filters feImage').evaluateAll(images=>images.map(el=>el.getAttribute('href')));
+ await page.waitForTimeout(200);
+ assert.deepEqual(await page.locator('.glass-filters feImage').evaluateAll(images=>images.map(el=>el.getAttribute('href'))),mapsBefore,'Refraction maps stay cached while geometry is unchanged');
  const dimensions=await page.evaluate(()=>({width:innerWidth,height:innerHeight}));
  assert.equal(dimensions.height,168);assert.ok(dimensions.width>=520);
  const bounds=await page.locator('.app.pill').boundingBox();
@@ -53,6 +74,20 @@ try{
  assert.equal((await page.evaluate(()=>window.companion.windowState())).topmost,true);
  assert.equal(await page.locator('main').count(),0,'Only one AMLL renderer stays mounted in pill mode');
  const row=text=>page.locator('.pill [class*="lyricLineWrapper"]').filter({hasText:text});
+ const shape=await page.locator('.pill').evaluate(el=>({
+  supported:CSS.supports('corner-shape','superellipse(1.5)'),
+  corner:getComputedStyle(el).getPropertyValue('corner-shape'),
+  radius:getComputedStyle(el).borderTopLeftRadius,
+ }));
+ assert.ok(shape.supported,'Installed WebView supports continuous superellipse corners');
+ assert.equal(shape.corner,'superellipse(1.5)');assert.equal(shape.radius,'40px');
+ const alignment=await row('把所有').evaluate(el=>{
+  const word=el.querySelector('[class*="lyricMainLine"] > span');
+  const glyph=word.getBoundingClientRect(),pill=el.closest('.pill').getBoundingClientRect();
+  return {glyphCenter:glyph.y+glyph.height/2,pillCenter:pill.y+pill.height/2};
+ });
+ console.log('current lyric alignment',alignment);
+ assert.ok(Math.abs(alignment.glyphCenter-alignment.pillCenter)<12,'Current lyric is visually centered in the floating window');
  assert.match(await page.locator('.pill .lyric-player').innerText(),/tenderness/);
  assert.equal(await page.locator('.pill-current').count(),0,'No custom plain-text renderer remains');
  assert.ok(await page.locator('.pill .amll-lyric-player').evaluate(el=>el.getAnimations({subtree:true}).length>0),'AMLL word animations remain active');
@@ -69,6 +104,21 @@ try{
  await page.mouse.move(-20,-20);await page.waitForTimeout(250);
  await mkdir('test-results/pill',{recursive:true});
  await page.screenshot({path:'test-results/pill/preview.png',omitBackground:true});
+ await page.screenshot({path:'test-results/glass/pill.png',omitBackground:true});
+ await page.evaluate(()=>{
+  const pattern=document.createElement('div');pattern.className='glass-test-pattern';
+  Object.assign(pattern.style,{position:'absolute',inset:'0',zIndex:'-1',background:'repeating-linear-gradient(90deg,#172343 0px,#172343 10px,#f9dc98 10px,#f9dc98 20px)'});
+  document.querySelector('.pill').append(pattern);
+  document.querySelector('.pill-lyrics').style.visibility='hidden';
+ });
+ await page.waitForTimeout(100);
+ await page.screenshot({path:'test-results/glass/refraction.png',omitBackground:true});
+ const originalFilter=await page.locator('.pill-glass').evaluate(el=>{
+  const previous=el.style.getPropertyValue('--glass-refraction');el.style.setProperty('--glass-refraction','blur(0px)');return previous;
+ });
+ await page.screenshot({path:'test-results/glass/refraction-flat.png',omitBackground:true});
+ await page.locator('.pill-glass').evaluate((el,value)=>el.style.setProperty('--glass-refraction',value),originalFilter);
+ await page.evaluate(()=>{document.querySelector('.glass-test-pattern').remove();document.querySelector('.pill-lyrics').style.visibility='';});
  await page.evaluate(()=>window.pillPlay());
  const motion=await page.evaluate(async()=>{
   const el=document.querySelector('.pill .lyric-player');
@@ -80,6 +130,17 @@ try{
   return {distinct:new Set(samples.map(JSON.stringify)).size,wordEffects:samples.some(s=>s.some(a=>a[1]>2))};
  });
  assert.ok(motion.distinct>3&&motion.wordEffects,'AMLL multi-keyframe word effects advance during playback');
+ const frames=await page.evaluate(()=>new Promise(resolve=>{
+  const times=[];let start=0,last=0;
+  const sample=now=>{
+   if(!start)start=now;else times.push(now-last);last=now;
+   if(now-start<2000)requestAnimationFrame(sample);
+   else{times.sort((a,b)=>a-b);resolve({fps:times.length*1000/(now-start),p95Ms:times[Math.floor(times.length*.95)],maxMs:Math.max(...times)});}
+  };requestAnimationFrame(sample);
+ }));
+ console.log('Liquid Glass + AMLL frame sample',frames);
+ assert.ok(frames.fps>30,'Liquid Glass preview must not stall the lyric animation');
+ await writeFile('test-results/glass/performance.json',JSON.stringify(frames,null,2));
  const spring=await page.evaluate(async()=>{
   window.pillSeek(7500);
   await new Promise(resolve=>setTimeout(resolve,120));

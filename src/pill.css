@@ -5,7 +5,8 @@ html:not(.lyric-window) .app[data-window-maximized="true"], .app[data-window-mod
   min-height: 0;
   height: calc(100vh - 40px);
   margin: 20px;
-  border-radius: 999px;
+  border-radius: 40px;
+  corner-shape: superellipse(1.5);
   box-shadow: 0 5px 16px #0005, 0 1px 5px #0003;
   cursor: grab;
   user-select: none;
@@ -26,7 +27,7 @@ html:not(.lyric-window) .app[data-window-maximized="true"], .app[data-window-mod
   font-size: var(--amll-lp-font-size);
   mask-image: linear-gradient(transparent,black 8%,black 82%,transparent 100%);
 }
-.pill [class*="lyricLineWrapper"] { align-items: center; padding-block: .3em; }
+.pill [class*="lyricLineWrapper"] { align-items: center; min-height: 72px; padding-block: .1em; gap: .15em; }
 .pill [class*="lyricLine"] { text-align: center; transform-origin: center; }
 .pill-status { padding-top: 38px; font-size: 26px; font-weight: 650; opacity: .8; }
 .pill-tools { position: absolute; z-index: 5; right: 25px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; padding: 5px; border-radius: 24px; background: #17111b85; backdrop-filter: blur(16px); opacity: 0; transition: opacity .18s; }
