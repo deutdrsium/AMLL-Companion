@@ -14,7 +14,7 @@ namespace Companion;
 
 internal sealed class MainWindow : Window
 {
-    private readonly WebView2 web = new();
+    private readonly WebView2CompositionControl web = new() { DefaultBackgroundColor = System.Drawing.Color.Transparent };
     private readonly SmtcService smtc;
     private readonly LyricsProviders lyrics = new();
     private readonly string[] args;
@@ -37,7 +37,7 @@ internal sealed class MainWindow : Window
         Title = "AMLL Companion"; Width = 1280; Height = 820; MinWidth = 320; MinHeight = 200;
         Icon = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize; Background = new SolidColorBrush(Color.FromRgb(25, 23, 27));
+        WindowStyle = WindowStyle.None; AllowsTransparency = true; ResizeMode = ResizeMode.CanResize; Background = Brushes.Transparent;
         WindowChrome.SetWindowChrome(this, new WindowChrome { CaptionHeight = 0, ResizeBorderThickness = new Thickness(5), CornerRadius = new CornerRadius(OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) ? 0 : 12), GlassFrameThickness = new Thickness(0) });
         web.Margin = new Thickness(0); Content = web;
         SourceInitialized += (_, _) => {
@@ -51,7 +51,6 @@ internal sealed class MainWindow : Window
         smtc.Changed += state => { if (ready) Post(new { type = "player:state", value = state }); };
         Loaded += async (_, _) => { await InitializeAsync(); if (!closed && args.Contains("--lyrics")) WindowAction("lyrics"); };
         StateChanged += (_, _) => { if (ready) Post(new {type="window:state", value=WindowSnapshot()}); };
-        SizeChanged += (_, _) => UpdateLyricRegion();
         Closed += (_, _) => { closed = true; lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
     }
 
@@ -173,9 +172,9 @@ internal sealed class MainWindow : Window
             lyricRestoreBounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
             lyricRestoreState = WindowState; lyricRestoreTopmost = Topmost;
             WindowState = WindowState.Normal;
-            lyricMode = true; MinWidth = 480; MinHeight = 128; MaxHeight = 128;
+            lyricMode = true; MinWidth = 520; MinHeight = 168; MaxHeight = 168;
             var area = SystemParameters.WorkArea;
-            Width = Math.Min(1040, area.Width - 48); Height = 128;
+            Width = Math.Min(1080, area.Width - 8); Height = 168;
             Left = area.Left + (area.Width - Width) / 2; Top = area.Bottom - Height - 28;
             Topmost = true; web.Margin = new Thickness(0);
         }
@@ -186,20 +185,9 @@ internal sealed class MainWindow : Window
             Left = lyricRestoreBounds.Left; Top = lyricRestoreBounds.Top;
             Width = lyricRestoreBounds.Width; Height = lyricRestoreBounds.Height; WindowState = lyricRestoreState;
         }
-        UpdateLyricRegion();
-    }
-
-    private void UpdateLyricRegion()
-    {
-        var handle = new WindowInteropHelper(this).Handle;
-        if (handle == IntPtr.Zero) return;
-        if (!lyricMode) { SetWindowRgn(handle, IntPtr.Zero, true); return; }
-        var scale = VisualTreeHelper.GetDpi(this);
-        var width = (int)Math.Round(ActualWidth * scale.DpiScaleX);
-        var height = (int)Math.Round(ActualHeight * scale.DpiScaleY);
-        var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, height, height);
-        // Windows owns the region after a successful SetWindowRgn.
-        if (SetWindowRgn(handle, region, true) == 0) DeleteObject(region);
+        // The pill draws its own alpha shadow; DWM would shadow the rectangular host.
+        var renderingPolicy = lyricMode ? 1 : 0; // DWMNCRP_DISABLED / DWMNCRP_USEWINDOWSTYLE
+        DwmSetWindowAttribute(new WindowInteropHelper(this).Handle, 2, ref renderingPolicy, sizeof(int));
     }
 
     private void ToggleFloating()
@@ -248,9 +236,6 @@ internal sealed class MainWindow : Window
     }
 
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-    [DllImport("gdi32.dll")] private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int ellipseWidth, int ellipseHeight);
-    [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr value);
-    [DllImport("user32.dll")] private static extern int SetWindowRgn(IntPtr hwnd, IntPtr region, bool redraw);
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);

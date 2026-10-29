@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BackgroundRender } from "@applemusic-like-lyrics/react";
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import {
@@ -38,7 +38,6 @@ import {
   songOffsetKey,
 } from "../shared/clock.mjs";
 import { LiveLyrics, Timeline } from "./Playback";
-import {PillLyrics} from './PillLyrics';
 import { useLayoutMotion } from './useLayoutMotion';
 import {MetadataEditor} from './MetadataEditor';
 import {readCorrections,saveCorrection,correctionKey,correctedMusic} from '../shared/metadata.mjs';
@@ -181,6 +180,10 @@ export default function App() {
     viewport.width <= 520 ||
     viewport.height <= 360;
   const pill=windowState.mode==='lyrics';
+  useLayoutEffect(()=>{
+    document.documentElement.classList.toggle('lyric-window',pill);
+    return()=>document.documentElement.classList.remove('lyric-window');
+  },[pill]);
   const ready = !!state.music?.musicName && state.connected;
   useLayoutMotion(viewport.width, viewport.height, mini, focus, reduceMotion);
 
@@ -440,7 +443,12 @@ export default function App() {
       <div className="light-bloom"/>
       <div className="shade" />
       {pill&&<>
-        <PillLyrics clock={clock} lines={lines} offset={offset} showTranslation={showTranslation} status={state.music?lyricStatus:'等待音乐响起'}/>
+        <div className="pill-lyrics" aria-label="悬浮同步歌词">
+          {lines.length?<LiveLyrics compact clock={clock} lines={lines} offset={offset}
+            playing={state.playing&&state.connected} reduceMotion={reduceMotion}
+            showTranslation={showTranslation} showRomanization={showRomanization} seek={()=>{}} authors={authors}/>
+            :<div className="pill-status">{state.music?lyricStatus:'等待音乐响起'}</div>}
+        </div>
         <div className="pill-tools">
           <button aria-label="返回主界面" title="返回主界面" onClick={()=>windowAction('lyrics')}><Maximize2 size={14}/></button>
           <button aria-label={windowState.topmost?'取消置顶':'窗口置顶'} title="切换置顶" onClick={()=>windowAction('pin')}>{windowState.topmost?<PinOff size={14}/>:<Pin size={14}/>}</button>

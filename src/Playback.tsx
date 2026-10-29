@@ -115,6 +115,7 @@ export function LiveLyrics({
   authors,
   showTranslation,
   showRomanization,
+  compact = false,
 }: {
   clock: PlaybackClock;
   lines: LyricLine[];
@@ -125,6 +126,7 @@ export function LiveLyrics({
   authors: string;
   showTranslation: boolean;
   showRomanization: boolean;
+  compact?: boolean;
 }) {
   const player = useRef<LyricPlayerRef>(null);
   const position=useRef<()=>number>(()=>0);
@@ -205,9 +207,10 @@ export function LiveLyrics({
       enableSpring={!reduceMotion}
       enableBlur={!reduceMotion}
       enableScale={!reduceMotion}
-      alignPosition={0.42}
+      alignAnchor={compact ? 'top' : 'center'}
+      alignPosition={compact ? 0.02 : 0.42}
       onLyricLineClick={(e) => seek(e.line.getLine().startTime - offset)}
-      bottomLine={<small className="credits">歌词贡献 · {authors}</small>}
+      bottomLine={compact ? undefined : <small className="credits">歌词贡献 · {authors}</small>}
     />
   );
 }
