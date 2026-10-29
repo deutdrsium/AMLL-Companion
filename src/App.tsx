@@ -448,7 +448,7 @@ export default function App() {
       <div className="shade" />
       </>}
       {pill&&<>
-        {pillBackground&&<div className="pill-glass glass-surface" aria-hidden="true"/>}
+        <div className="pill-glass glass-surface" aria-hidden="true"/>
         <div className="pill-lyrics" aria-label="悬浮同步歌词">
           {lines.length?<LiveLyrics compact clock={clock} lines={lines} offset={offset}
             playing={state.playing&&state.connected} reduceMotion={reduceMotion}
@@ -752,7 +752,7 @@ export default function App() {
               </div>
               {state.error && <p className="hint" role="alert">{state.error}</p>}
               <label className="setting">
-                <div><strong>悬浮歌词背景</strong><p>关闭后仅显示歌词文字，背景和阴影透明。仅影响悬浮歌词模式。</p></div>
+                <div><strong>悬浮歌词背景</strong><p>开启显示专辑流动背景，关闭使用透明液态玻璃。仅影响悬浮歌词模式。</p></div>
                 <input type="checkbox" aria-label="悬浮歌词背景" checked={pillBackground} onChange={e=>setPillBackground(e.target.checked)}/>
               </label>
               <label className="setting">

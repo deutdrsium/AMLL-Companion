@@ -192,13 +192,21 @@ try{
  await page.getByRole('button',{name:'关闭弹窗',exact:true}).click();
  await page.getByRole('button',{name:'悬浮歌词',exact:true}).click();
  await page.waitForSelector('.pill.no-background .amll-lyric-player');
- assert.equal(await page.locator('.ambient,.album-background,.cover-glow,.light-bloom,.shade').count(),0,'Transparent mode unmounts all background layers');
- assert.equal(await page.locator('.pill').evaluate(el=>getComputedStyle(el).boxShadow),'none','No pill shadow remains');
+ assert.equal(await page.locator('.ambient,.album-background,.cover-glow,.light-bloom,.shade').count(),0,'Clear glass unmounts the album and ambient background layers');
+ await page.waitForSelector('.pill.no-background .pill-glass[data-glass-ready="true"]');
+ assert.equal(await page.locator('.pill-glass').count(),1,'Clear mode keeps one glass material');
+ assert.notEqual(await page.locator('.pill').evaluate(el=>getComputedStyle(el).boxShadow),'none','Clear glass retains a soft silhouette shadow');
  await page.reload({waitUntil:'domcontentloaded'});
  await page.waitForSelector('.pill.no-background .amll-lyric-player');
+ await page.waitForSelector('.pill.no-background .pill-glass[data-glass-ready="true"]');
  assert.equal(await page.evaluate(()=>localStorage.getItem('pill-background')),'false','Background preference survives reload');
  await page.mouse.move(-20,-20);await page.waitForTimeout(800);
  await page.screenshot({path:'test-results/pill/transparent.png',omitBackground:true});
+ await page.screenshot({path:'test-results/glass/clear-pill.png',omitBackground:true});
+ await page.mouse.move(200,70);
+ await page.waitForFunction(()=>!!document.querySelector('.pill-glass').style.getPropertyValue('--glass-light-x'));
+ assert.equal(await page.locator('.ambient,.album-background,.cover-glow,.light-bloom,.shade').count(),0,'Pointer feedback must not restore the album background');
+ await page.mouse.move(-20,-20);
  assert.ok(await page.locator('.pill .amll-lyric-player').evaluate(el=>el.getAnimations({subtree:true}).length>0),'Transparent mode retains AMLL word animations');
  await page.keyboard.press('Escape');await page.waitForSelector('main');
  await page.getByRole('button',{name:'设置',exact:true}).click();
@@ -218,5 +226,5 @@ try{
  assert.equal(await page.locator('.pill-glass').evaluate(el=>getComputedStyle(el).backdropFilter),'none');
  await media.send('Emulation.setEmulatedMedia',{features:[]});await media.detach();
  assert.deepEqual(errors,[]);
- console.log('PASS native pill: alpha/shadow, AMLL word and spring motion, seek, resize, restore, background toggle, transparent text, saved preference, normal background preserved, re-enable, no page errors');
+ console.log('PASS native pill: alpha/shadow, AMLL word and spring motion, seek, resize, restore, background toggle, clear glass with pointer feedback, saved preference, normal background preserved, re-enable, no page errors');
 }finally{if(host.exitCode===null)host.kill();await browser?.close();}

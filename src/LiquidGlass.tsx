@@ -65,7 +65,7 @@ export function LiquidGlass({layout,reduceMotion}:{layout:string;reduceMotion:bo
     let surface:HTMLElement|null=null,x=50,y=0;
     const move=(event:PointerEvent)=>{
       const target=event.target as HTMLElement;
-      surface=target.closest<HTMLElement>('.glass-surface')||(target.closest('.pill:not(.no-background)')?.querySelector<HTMLElement>('.pill-glass')??null);
+      surface=target.closest<HTMLElement>('.glass-surface')||(target.closest('.pill')?.querySelector<HTMLElement>('.pill-glass')??null);
       if(!surface)return;
       const rect=surface.getBoundingClientRect();
       x=Math.max(0,Math.min(100,(event.clientX-rect.x)/rect.width*100));

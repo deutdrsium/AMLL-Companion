@@ -13,17 +13,25 @@ try {
 } finally { $pillImage.Dispose() }
 $pillTransparent = [Drawing.Bitmap]::new((Join-Path $PSScriptRoot '..\test-results\pill\transparent.png'))
 try {
-    $pillEmpty = 0
+    $pillLowAlpha = 0
+    $pillGlyphs = 0
     $pillSamples = 0
     for ($pillY = 0; $pillY -lt $pillTransparent.Height; $pillY += 4) {
         for ($pillX = 0; $pillX -lt $pillTransparent.Width; $pillX += 4) {
             $pillSamples++
-            if ($pillTransparent.GetPixel($pillX, $pillY).A -eq 0) { $pillEmpty++ }
+            $pillAlpha = $pillTransparent.GetPixel($pillX, $pillY).A
+            if ($pillAlpha -lt 100) { $pillLowAlpha++ }
+            if ($pillAlpha -gt 200) { $pillGlyphs++ }
         }
     }
-    if ($pillEmpty -lt $pillSamples * 0.8 -or $pillEmpty -eq $pillSamples) { throw 'Transparent mode must render visible glyphs over an otherwise transparent window' }
-    if ($pillTransparent.GetPixel(75, [int]($pillTransparent.Height / 2)).A -ne 0) { throw 'No pill body or shadow may remain behind the text' }
-    Write-Output 'PASS transparent text: visible glyphs, empty body and no pill shadow'
+    if ($pillLowAlpha -lt $pillSamples * 0.8 -or $pillGlyphs -eq 0) { throw 'Clear glass must stay translucent while rendering visible AMLL glyphs' }
+    $pillClearScale = $pillTransparent.Height / 168
+    $pillBodyAlpha = $pillTransparent.GetPixel([int](75 * $pillClearScale), [int]($pillTransparent.Height / 2)).A
+    if ($pillBodyAlpha -le 0 -or $pillBodyAlpha -ge 70) { throw 'Clear mode must retain a faint glass body instead of empty or opaque pixels' }
+    if ($pillTransparent.GetPixel(0, 0).A -ne 0 -or $pillTransparent.GetPixel([int](22 * $pillClearScale),[int](22 * $pillClearScale)).A -ge 10) { throw 'Clear glass must preserve the transparent host and continuous corners' }
+    $pillClearShadow = $pillTransparent.GetPixel([int]($pillTransparent.Width / 2),[int](152 * $pillClearScale)).A
+    if ($pillClearShadow -le 0 -or $pillClearShadow -ge 100) { throw 'Clear glass needs a faint shadow outside its silhouette' }
+    Write-Output "PASS clear glass: translucent body (alpha $pillBodyAlpha), transparent corners, visible AMLL glyphs and soft shadow"
 } finally { $pillTransparent.Dispose() }
 $glassBent = [Drawing.Bitmap]::new((Join-Path $PSScriptRoot '..\test-results\glass\refraction.png'))
 $glassFlat = [Drawing.Bitmap]::new((Join-Path $PSScriptRoot '..\test-results\glass\refraction-flat.png'))

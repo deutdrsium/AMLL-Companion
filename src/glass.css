@@ -79,7 +79,10 @@ dialog select option { background: #292735; }
 .pill .album-background { opacity: .95; }
 .pill .shade { background: linear-gradient(110deg,#15101b24,#100d233d); }
 .pill .pill-tools { background: #25213190; box-shadow: inset 0 1px 0 #ffffff20; }
-.pill.no-background .pill-tools { background: transparent; box-shadow: none; }
+.pill.no-background .pill-glass.glass-surface {
+  background: linear-gradient(165deg,#ffffff15,#ffffff03 42%,#ffffff09),#10121a12;
+}
+.pill.no-background .pill-tools { background: #17192140; }
 @keyframes glass-open { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { dialog.glass-surface { animation: none; } }
 .reduced-motion dialog.glass-surface { animation: none; }
