@@ -38,6 +38,7 @@ import {
   songOffsetKey,
 } from "../shared/clock.mjs";
 import { LiveLyrics, Timeline } from "./Playback";
+import {PillLyrics} from './PillLyrics';
 import { useLayoutMotion } from './useLayoutMotion';
 import {MetadataEditor} from './MetadataEditor';
 import {readCorrections,saveCorrection,correctionKey,correctedMusic} from '../shared/metadata.mjs';
@@ -179,6 +180,7 @@ export default function App() {
     windowState.mode === "floating" ||
     viewport.width <= 520 ||
     viewport.height <= 360;
+  const pill=windowState.mode==='lyrics';
   const ready = !!state.music?.musicName && state.connected;
   useLayoutMotion(viewport.width, viewport.height, mini, focus, reduceMotion);
 
@@ -382,6 +384,9 @@ export default function App() {
         void windowAction("fullscreen");
         return;
       }
+      if(event.key==='Escape'&&windowState.mode==='lyrics'){
+        void windowAction('lyrics');return;
+      }
       if (event.key === "Escape" && windowState.mode === "fullscreen") {
         void windowAction("exitFullscreen");
         return;
@@ -411,7 +416,8 @@ export default function App() {
 
   return (
     <div
-      className={`app ${focus ? "focus" : ""} ${mini ? "mini" : ""} ${reduceMotion ? "reduced-motion" : ""}`}
+      className={`app ${focus ? "focus" : ""} ${mini ? "mini" : ""} ${pill ? 'pill' : ''} ${reduceMotion ? "reduced-motion" : ""}`}
+      onPointerDown={e=>{if(pill&&e.button===0&&!(e.target as HTMLElement).closest('button,.resize-handle'))void windowAction('drag');}}
       data-window-mode={windowState.mode}
       data-window-maximized={!!windowState.maximized}
     >
@@ -433,6 +439,14 @@ export default function App() {
       {state.cover && <div className="cover-glow" style={{backgroundImage: `url("${state.cover}")`}}/>}
       <div className="light-bloom"/>
       <div className="shade" />
+      {pill&&<>
+        <PillLyrics clock={clock} lines={lines} offset={offset} showTranslation={showTranslation} status={state.music?lyricStatus:'等待音乐响起'}/>
+        <div className="pill-tools">
+          <button aria-label="返回主界面" title="返回主界面" onClick={()=>windowAction('lyrics')}><Maximize2 size={14}/></button>
+          <button aria-label={windowState.topmost?'取消置顶':'窗口置顶'} title="切换置顶" onClick={()=>windowAction('pin')}>{windowState.topmost?<PinOff size={14}/>:<Pin size={14}/>}</button>
+          <button aria-label="最小化" title="最小化" onClick={()=>windowAction('minimize')}><Minus size={14}/></button>
+        </div>
+      </>}
       <header
         className="titlebar"
         onPointerDown={(e) => {
@@ -448,6 +462,7 @@ export default function App() {
           <Music2 size={18} fill="currentColor" /> AMLL <span>Companion {version}</span>
         </span>
         {!mini && <div className="top-actions">
+          <button className="icon" title="悬浮歌词" aria-label="悬浮歌词" onClick={()=>windowAction('lyrics')}><AudioLines size={18}/></button>
           <button className={`connection ${state.connected ? "online" : ""}`} onClick={() => setSettings(true)}>
             <i />{state.connected ? "SMTC 已连接" : "等待播放"}
           </button>
@@ -462,6 +477,7 @@ export default function App() {
         <div className="window-actions">
           {mini && (
             <>
+              <button aria-label="悬浮歌词" title="悬浮歌词" onClick={()=>windowAction('lyrics')}><AudioLines size={15}/></button>
               <button
                 aria-label="设置"
                 title="设置"
@@ -509,7 +525,7 @@ export default function App() {
           </button>
         </div>
       </header>
-      <main>
+      {!pill&&<main>
         <section className="player-panel" aria-label="正在播放的歌曲">
           <div className={`artwork ${state.playing ? "playing" : ""}`}>
             {state.cover ? (
@@ -639,7 +655,7 @@ export default function App() {
               <Search size={17} />
             </button>
           </div>
-          {lines.length ? (
+          {!pill&&lines.length ? (
             <LiveLyrics
               clock={clock}
               lines={lines}
@@ -688,7 +704,7 @@ export default function App() {
             </button>
           </div>
         </section>
-      </main>
+      </main>}
       <dialog
         ref={dialog}
         onCancel={closeDialog}

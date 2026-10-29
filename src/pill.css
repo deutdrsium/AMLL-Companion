@@ -1,0 +1,23 @@
+.app.pill {
+  min-height: 0;
+  border-radius: 999px;
+  border: 1px solid #ffffff22;
+  cursor: grab;
+  user-select: none;
+}
+.pill .titlebar, .pill main { display: none; }
+.pill .album-background { opacity: .85; }
+.pill .shade { background: linear-gradient(120deg,#17111b30,#17111b70); }
+.pill .resize-n, .pill .resize-s, .pill .resize-nw, .pill .resize-ne, .pill .resize-sw, .pill .resize-se { display: none; }
+.pill .resize-w, .pill .resize-e { top: 35%; bottom: 35%; }
+.pill-lyrics { position: absolute; inset: 0 64px; text-align: center; overflow: hidden; pointer-events: none; }
+.pill-current-block { position: absolute; inset: 16px 0 auto; animation: pill-arrive .38s cubic-bezier(.2,.7,.2,1) both; }
+.pill-current { font-size: clamp(28px,4.6vw,38px); line-height: 1.4; font-weight: 700; letter-spacing: .02em; white-space: pre; text-shadow: 0 2px 18px #0002; }
+.pill-current span { color: transparent; background: linear-gradient(90deg,#fff var(--sung,0%),#ffffff82 var(--sung,0%)); background-clip: text; }
+.pill-translation { font-size: 14px; line-height: 22px; opacity: .68; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill-next { position: absolute; top: 104px; left: 0; right: 0; font-size: 26px; line-height: 39px; font-weight: 650; opacity: .36; white-space: nowrap; mask-image: linear-gradient(#000,transparent 72%); }
+.pill-tools { position: absolute; z-index: 5; right: 25px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; padding: 5px; border-radius: 24px; background: #17111b85; backdrop-filter: blur(16px); opacity: 0; transition: opacity .18s; }
+.pill-tools button { width: 27px; height: 27px; border-radius: 50%; }
+.pill:hover .pill-tools, .pill:focus-within .pill-tools { opacity: 1; }
+.pill.reduced-motion .pill-current-block { animation: none; }
+@keyframes pill-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

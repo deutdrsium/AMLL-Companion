@@ -61,7 +61,7 @@ export interface Command {
 }
 export interface WindowState {
   maximized?: boolean;
-  mode: "normal" | "floating" | "fullscreen";
+  mode: "normal" | "floating" | "fullscreen" | "lyrics";
   topmost: boolean;
 }
 declare global {

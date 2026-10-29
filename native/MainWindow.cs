@@ -19,7 +19,10 @@ internal sealed class MainWindow : Window
     private readonly LyricsProviders lyrics = new();
     private readonly string[] args;
     private readonly DebugDiagnostics? diagnostics;
-    private bool ready, floating, fullscreen, closed;
+    private bool ready, floating, fullscreen, closed, lyricMode;
+    private Rect lyricRestoreBounds;
+    private WindowState lyricRestoreState;
+    private bool lyricRestoreTopmost;
     private Rect normalBounds = new(100, 100, 1280, 820);
     private Rect fullscreenBounds;
     private WindowState previousState;
@@ -46,8 +49,9 @@ internal sealed class MainWindow : Window
         };
         smtc = new SmtcService(Dispatcher);
         smtc.Changed += state => { if (ready) Post(new { type = "player:state", value = state }); };
-        Loaded += async (_, _) => await InitializeAsync();
+        Loaded += async (_, _) => { await InitializeAsync(); if (!closed && args.Contains("--lyrics")) WindowAction("lyrics"); };
         StateChanged += (_, _) => { if (ready) Post(new {type="window:state", value=WindowSnapshot()}); };
+        SizeChanged += (_, _) => UpdateLyricRegion();
         Closed += (_, _) => { closed = true; lyrics.Dispose(); smtc.Dispose(); web.Dispose(); };
     }
 
@@ -135,7 +139,7 @@ internal sealed class MainWindow : Window
         }
     }
 
-    private object WindowSnapshot() => new { mode = fullscreen ? "fullscreen" : floating ? "floating" : "normal", topmost = Topmost, maximized = WindowState == WindowState.Maximized };
+    private object WindowSnapshot() => new { mode = lyricMode ? "lyrics" : fullscreen ? "fullscreen" : floating ? "floating" : "normal", topmost = Topmost, maximized = WindowState == WindowState.Maximized };
     private void WindowAction(string action)
     {
         switch (action)
@@ -145,18 +149,57 @@ internal sealed class MainWindow : Window
                 var hit = resize[7..] switch { "w"=>10, "e"=>11, "n"=>12, "nw"=>13, "ne"=>14, "s"=>15, "sw"=>16, "se"=>17, _=>throw new ArgumentException("未知缩放方向") };
                 ReleaseCapture(); SendMessage(new WindowInteropHelper(this).Handle, 0x0112, new IntPtr(0xf000 + hit - 9), IntPtr.Zero); break;
             case "minimize": WindowState = WindowState.Minimized; break;
-            case "maximize": if (floating) ToggleFloating(); WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized; break;
+            case "maximize": if (lyricMode) ToggleLyrics(); if (floating) ToggleFloating(); WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized; break;
             case "close": Close(); return;
             case "drag":
                 if (fullscreen) return;
                 ReleaseCapture(); SendMessage(new WindowInteropHelper(this).Handle, 0x00A1, new IntPtr(2), IntPtr.Zero); break;
-            case "fullscreen": ToggleFullscreen(); break;
-            case "floating": if (fullscreen) ToggleFullscreen(); ToggleFloating(); break;
+            case "fullscreen": if (lyricMode) ToggleLyrics(); ToggleFullscreen(); break;
+            case "floating": if (lyricMode) ToggleLyrics(); if (fullscreen) ToggleFullscreen(); ToggleFloating(); break;
+            case "lyrics": ToggleLyrics(); break;
             case "pin": Topmost = !Topmost; break;
             case "exitFullscreen": if (fullscreen) ToggleFullscreen(); break;
             default: throw new ArgumentException("未知窗口操作");
         }
         Post(new { type = "window:state", value = WindowSnapshot() });
+    }
+
+    private void ToggleLyrics()
+    {
+        if (!lyricMode)
+        {
+            if (fullscreen) ToggleFullscreen();
+            if (floating) ToggleFloating();
+            lyricRestoreBounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+            lyricRestoreState = WindowState; lyricRestoreTopmost = Topmost;
+            WindowState = WindowState.Normal;
+            lyricMode = true; MinWidth = 480; MinHeight = 128; MaxHeight = 128;
+            var area = SystemParameters.WorkArea;
+            Width = Math.Min(1040, area.Width - 48); Height = 128;
+            Left = area.Left + (area.Width - Width) / 2; Top = area.Bottom - Height - 28;
+            Topmost = true; web.Margin = new Thickness(0);
+        }
+        else
+        {
+            lyricMode = false; MinWidth = 320; MinHeight = 200; MaxHeight = double.PositiveInfinity;
+            Topmost = lyricRestoreTopmost;
+            Left = lyricRestoreBounds.Left; Top = lyricRestoreBounds.Top;
+            Width = lyricRestoreBounds.Width; Height = lyricRestoreBounds.Height; WindowState = lyricRestoreState;
+        }
+        UpdateLyricRegion();
+    }
+
+    private void UpdateLyricRegion()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+        if (!lyricMode) { SetWindowRgn(handle, IntPtr.Zero, true); return; }
+        var scale = VisualTreeHelper.GetDpi(this);
+        var width = (int)Math.Round(ActualWidth * scale.DpiScaleX);
+        var height = (int)Math.Round(ActualHeight * scale.DpiScaleY);
+        var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, height, height);
+        // Windows owns the region after a successful SetWindowRgn.
+        if (SetWindowRgn(handle, region, true) == 0) DeleteObject(region);
     }
 
     private void ToggleFloating()
@@ -205,6 +248,9 @@ internal sealed class MainWindow : Window
     }
 
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int ellipseWidth, int ellipseHeight);
+    [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr value);
+    [DllImport("user32.dll")] private static extern int SetWindowRgn(IntPtr hwnd, IntPtr region, bool redraw);
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);

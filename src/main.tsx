@@ -5,6 +5,7 @@ import "@applemusic-like-lyrics/core/style.css";
 import "./style.css";
 import "./responsive.css";
 import "./floating.css";
+import "./pill.css";
 
 startRendererDiagnostics();
 createRoot(document.getElementById("root")!).render(<App />);
