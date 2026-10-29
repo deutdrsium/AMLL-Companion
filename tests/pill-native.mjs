@@ -49,6 +49,7 @@ try{
  await page.waitForSelector('dialog[open][data-glass-ready="true"]');
  assert.equal(await page.locator('dialog .glass-surface').count(),0,'Menu rows share a single material rather than stacking glass');
  assert.match(await page.locator('dialog').evaluate(el=>getComputedStyle(el).backdropFilter),/url\(/,'Menus use live backdrop refraction');
+ assert.equal(await page.locator('dialog').evaluate(el=>getComputedStyle(el,'::backdrop').backdropFilter),'none','Only the material scatters light; do not blur the entire scene before refraction');
  assert.ok(await page.locator('dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),'Glass menu must not introduce a horizontal scrollbar');
  await page.waitForTimeout(300);
  await page.screenshot({path:'test-results/glass/settings.png'});
@@ -62,6 +63,13 @@ try{
  await page.waitForSelector('.pill .amll-lyric-player');
  await page.waitForTimeout(800);
  await page.waitForSelector('.pill-glass[data-glass-ready="true"]');
+ const filterGeometry=await page.locator('.pill-glass').evaluate(el=>{
+  const filter=document.querySelector('.glass-filters filter');
+  return {units:filter.getAttribute('filterUnits'),width:+filter.getAttribute('width'),height:+filter.getAttribute('height'),surface:[el.clientWidth,el.clientHeight]};
+ });
+ assert.equal(filterGeometry.units,'userSpaceOnUse','Backdrops need explicit local coordinates to avoid shifted optical rims');
+ assert.deepEqual([filterGeometry.width,filterGeometry.height],filterGeometry.surface);
+ assert.equal(await page.locator('.pill .lyric-player').evaluate(el=>getComputedStyle(el).filter),'none','Foreground lyrics must stay outside optical distortion');
  assert.match(await page.locator('.pill-glass').evaluate(el=>getComputedStyle(el).backdropFilter),/url\(/,'Pill uses edge refraction over the live album background');
  const mapsBefore=await page.locator('.glass-filters feImage').evaluateAll(images=>images.map(el=>el.getAttribute('href')));
  await page.waitForTimeout(200);
@@ -113,6 +121,9 @@ try{
  });
  await page.waitForTimeout(100);
  await page.screenshot({path:'test-results/glass/refraction.png',omitBackground:true});
+ await page.locator('.glass-test-pattern').evaluate(el=>el.style.background='repeating-linear-gradient(0deg,#172343 0px,#172343 10px,#f9dc98 10px,#f9dc98 20px)');
+ await page.screenshot({path:'test-results/glass/refraction-horizontal.png',omitBackground:true});
+ await page.locator('.glass-test-pattern').evaluate(el=>el.style.background='repeating-linear-gradient(90deg,#172343 0px,#172343 10px,#f9dc98 10px,#f9dc98 20px)');
  const originalFilter=await page.locator('.pill-glass').evaluate(el=>{
   const previous=el.style.getPropertyValue('--glass-refraction');el.style.setProperty('--glass-refraction','blur(0px)');return previous;
  });
@@ -198,6 +209,14 @@ try{
  await page.waitForSelector('.pill .album-background');
  assert.equal(await page.locator('.pill.no-background').count(),0,'Re-enabling restores the pill background');
  assert.notEqual(await page.locator('.pill').evaluate(el=>getComputedStyle(el).boxShadow),'none');
+ const media=await page.context().newCDPSession(page);
+ await media.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
+ await page.waitForFunction(()=>matchMedia('(prefers-reduced-transparency: reduce)').matches);
+ assert.equal(await page.locator('.pill-glass').evaluate(el=>getComputedStyle(el).backdropFilter),'none');
+ await media.send('Emulation.setEmulatedMedia',{features:[{name:'forced-colors',value:'active'}]});
+ await page.waitForFunction(()=>matchMedia('(forced-colors: active)').matches);
+ assert.equal(await page.locator('.pill-glass').evaluate(el=>getComputedStyle(el).backdropFilter),'none');
+ await media.send('Emulation.setEmulatedMedia',{features:[]});await media.detach();
  assert.deepEqual(errors,[]);
  console.log('PASS native pill: alpha/shadow, AMLL word and spring motion, seek, resize, restore, background toggle, transparent text, saved preference, normal background preserved, re-enable, no page errors');
 }finally{if(host.exitCode===null)host.kill();await browser?.close();}

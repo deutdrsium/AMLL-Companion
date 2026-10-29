@@ -1,5 +1,8 @@
 # Third-party notices
 
+- liquidglass: https://github.com/shayann07/liquidglass, revision 0cbd5e24058d2fb3fffe45b72cd07915d4dcea6f — Apache-2.0, Copyright 2026 Shayan. `shared/glass-optics.mjs` adapts the superellipse normal, Snell bevel and directional rim lighting from `ports/skia/shaders/material.sksl` to CPU-generated SVG maps. This is a subset with local parameters, not the complete upstream renderer. License: licenses/Apache-2.0.txt; retained upstream notice and idea attributions: licenses/liquidglass-NOTICE.txt.
+- liquid-glass-react: https://github.com/rdev/liquid-glass-react, revision ac48eab18d1f7f444ae30002d240cae29c863a21 — MIT, Copyright 2025 MAX ROVENSKY. The RGB displacement/channel-combination approach in `src/LiquidGlass.tsx` is adapted from its `GlassFilter`, with geometry-based displacement, a smaller channel split on compact controls, and blur before refraction. License: licenses/liquid-glass-react-MIT.txt. No upstream React wrapper, utility CSS or embedded displacement assets are bundled.
+
 - UniLyric: https://github.com/apoint123/Unilyric — MIT. Its Cargo.lock selects the SMTC engine revision below. The full UniLyric application is not redistributed.
 - smtc-suite 2.6.1: https://github.com/apoint123/smtc-suite/tree/6d1ea54fd30a1861dbefb88c26cdf634d7a4432f — MIT, copyright apoint123 (2025). Compiled into unilyric-bridge.exe with a local patch for delayed cover notifications and stale async cover results; see native/vendor/smtc-suite/PATCHES.md. License: licenses/smtc-suite-MIT.txt. Rust dependencies are pinned in native/unilyric-bridge/Cargo.lock.
 - opencc-js: https://github.com/nk2028/opencc-js — MIT. License: licenses/opencc-js-MIT.txt; bundled dictionary notices: licenses/opencc-js-third-party.md and licenses/Apache-2.0.txt.

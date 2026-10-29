@@ -1,25 +1,25 @@
 .glass-filters { position: absolute; width: 0; height: 0; pointer-events: none; }
 .glass-surface {
-  --glass-blur: 14px;
-  background: linear-gradient(150deg,#ffffff16,#ffffff03 48%,#ffffff0c),#24222e99;
-  border: 1px solid #ffffff26;
+  --glass-blur: 6px;
+  background: linear-gradient(165deg,#ffffff0c,#ffffff02 45%,#ffffff06),#16141e38;
+  border: 1px solid transparent;
   border-radius: 24px;
   corner-shape: superellipse(1.5);
-  backdrop-filter: var(--glass-refraction,blur(0px)) blur(var(--glass-blur)) saturate(1.25);
-  box-shadow: inset 0 1px 0 #ffffff45,inset 0 -1px 0 #ffffff0b,0 8px 24px #09061524;
+  backdrop-filter: var(--glass-refraction,blur(var(--glass-blur))) saturate(1.35);
+  box-shadow: 0 2px 4px #09061518,0 10px 28px #09061530;
 }
 .glass-surface:not(dialog) { position: relative; }
 .glass-surface::before {
-  content: ''; position: absolute; inset: -1px; border-radius: inherit; corner-shape: inherit;
+  content: ''; position: absolute; inset: 0; border-radius: inherit; corner-shape: inherit;
   padding: 1px; pointer-events: none;
-  background: linear-gradient(140deg,#ffffff68,transparent 28%,#ffffff0b 65%,#ffffff38);
+  background: radial-gradient(ellipse at var(--glass-light-x,25%) var(--glass-light-y,0%),#ffffff38,transparent 60%);
   mask: linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   mask-composite: exclude;
 }
 .glass-surface::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; corner-shape: inherit;
   pointer-events: none;
-  background: radial-gradient(ellipse at var(--glass-light-x,25%) var(--glass-light-y,0%),#ffffff1c,transparent 65%);
+  background: var(--glass-rim) center / 100% 100% no-repeat;
 }
 .titlebar { background: transparent; border-bottom: none; }
 .titlebar .top-actions.glass-surface { height: 34px; gap: 2px; padding: 1px 5px; border-radius: 18px; }
@@ -30,17 +30,17 @@
 .transport button { transition: background-color .16s,transform .16s; }
 .transport button:not(:disabled):active { transform: scale(.94); }
 dialog.glass-surface {
-  --glass-blur: 24px;
-  background: linear-gradient(150deg,#ffffff16,transparent 35%),#211f2cce;
+  --glass-blur: 14px;
+  background: linear-gradient(160deg,#ffffff0a,transparent 40%),#1816219e;
   border-radius: 30px;
-  box-shadow: inset 0 1px 0 #ffffff55,0 24px 80px #08051060;
+  box-shadow: 0 3px 8px #08051024,0 24px 80px #08051060;
   animation: glass-open .24s cubic-bezier(.2,.8,.2,1);
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #ffffff38 transparent;
 }
 dialog.glass-surface::before { inset: 0; }
-dialog::backdrop { background: #0c0a1836; backdrop-filter: blur(5px); }
+dialog::backdrop { background: #0c0a1826; backdrop-filter: none; }
 .dialog-body { padding: 26px; }
 .dialog-title { margin-bottom: 18px; }
 .dialog-title h2 { font-size: 22px; font-weight: 650; letter-spacing: -.4px; }
@@ -69,12 +69,12 @@ dialog select option { background: #292735; }
 .candidates span { color: #e5dfeab8; }
 .pill .pill-glass.glass-surface {
   position: absolute; inset: 0; border: 0; border-radius: inherit; corner-shape: inherit;
-  --glass-blur: 2px;
-  background: linear-gradient(160deg,#ffffff13,transparent 42%,#ffffff07),#15132314;
+  --glass-blur: .6px;
+  background: linear-gradient(160deg,#ffffff05,transparent 45%,#ffffff04),#13111b0c;
   z-index: 0; pointer-events: none;
-  box-shadow: inset 0 1px 1px #ffffff70,inset 0 -1px 1px #ffffff16;
+  box-shadow: none;
 }
-.pill .pill-glass::before { inset: 0; padding: 1.2px; }
+.pill .pill-glass::before { inset: 0; }
 .pill .pill-lyrics { z-index: 1; }
 .pill .album-background { opacity: .95; }
 .pill .shade { background: linear-gradient(110deg,#15101b24,#100d233d); }
@@ -83,5 +83,10 @@ dialog select option { background: #292735; }
 @keyframes glass-open { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { dialog.glass-surface { animation: none; } }
 .reduced-motion dialog.glass-surface { animation: none; }
-@media (forced-colors: active) { .glass-surface { background: Canvas; border-color: ButtonText; backdrop-filter: none; } .glass-surface::before,.glass-surface::after { display: none; } }
-@media (prefers-reduced-transparency: reduce) { .glass-surface { background: #292735; backdrop-filter: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .glass-surface,dialog.glass-surface,.pill .pill-glass.glass-surface { background: #292735; backdrop-filter: none; }
+}
+@media (forced-colors: active) {
+  .glass-surface,dialog.glass-surface,.pill .pill-glass.glass-surface { background: Canvas; border: 1px solid ButtonText; backdrop-filter: none; }
+  .glass-surface::before,.glass-surface::after { display: none; }
+}
