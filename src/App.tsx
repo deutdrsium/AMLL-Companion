@@ -155,6 +155,7 @@ export default function App() {
     () => localStorage.getItem("reduce-motion") === "true",
   );
   const [showTranslation, setShowTranslation] = useState(() => localStorage.getItem('show-translation') !== 'false');
+  const [pillBackground, setPillBackground] = useState(() => localStorage.getItem('pill-background') !== 'false');
   const [showRomanization, setShowRomanization] = useState(() => localStorage.getItem('show-romanization') !== 'false');
   const [corrections,setCorrections]=useState(()=>readCorrections());
   const [metadata,setMetadata]=useState<{key:string;music:Music;message:string}|null>(null);
@@ -232,6 +233,7 @@ export default function App() {
     localStorage.setItem("reduce-motion", String(reduceMotion));
   }, [reduceMotion]);
   useEffect(() => { localStorage.setItem('show-translation', String(showTranslation)); }, [showTranslation]);
+  useEffect(() => { localStorage.setItem('pill-background', String(pillBackground)); }, [pillBackground]);
   useEffect(() => { localStorage.setItem('show-romanization', String(showRomanization)); }, [showRomanization]);
   useEffect(() => {
     if (settings || picker) dialog.current?.showModal();
@@ -419,7 +421,7 @@ export default function App() {
 
   return (
     <div
-      className={`app ${focus ? "focus" : ""} ${mini ? "mini" : ""} ${pill ? 'pill' : ''} ${reduceMotion ? "reduced-motion" : ""}`}
+      className={`app ${focus ? "focus" : ""} ${mini ? "mini" : ""} ${pill ? 'pill' : ''} ${pill&&!pillBackground ? 'no-background' : ''} ${reduceMotion ? "reduced-motion" : ""}`}
       onPointerDown={e=>{if(pill&&e.button===0&&!(e.target as HTMLElement).closest('button,.resize-handle'))void windowAction('drag');}}
       data-window-mode={windowState.mode}
       data-window-maximized={!!windowState.maximized}
@@ -427,6 +429,7 @@ export default function App() {
       {['n','s','w','e','nw','ne','sw','se'].map(edge => <div key={edge} className={`resize-handle resize-${edge}`} onPointerDown={e => {
         if (e.button === 0) { e.preventDefault(); void windowAction(`resize-${edge}`); }
       }}/>)}
+      {(!pill||pillBackground)&&<>
       <div className="ambient" />
       {state.cover && (
         <BackgroundRender
@@ -442,6 +445,7 @@ export default function App() {
       {state.cover && <div className="cover-glow" style={{backgroundImage: `url("${state.cover}")`}}/>}
       <div className="light-bloom"/>
       <div className="shade" />
+      </>}
       {pill&&<>
         <div className="pill-lyrics" aria-label="悬浮同步歌词">
           {lines.length?<LiveLyrics compact clock={clock} lines={lines} offset={offset}
@@ -744,6 +748,10 @@ export default function App() {
                 {state.connected && <Check size={20} />}
               </div>
               {state.error && <p className="hint" role="alert">{state.error}</p>}
+              <label className="setting">
+                <div><strong>悬浮歌词背景</strong><p>关闭后仅显示歌词文字，背景和阴影透明。仅影响悬浮歌词模式。</p></div>
+                <input type="checkbox" aria-label="悬浮歌词背景" checked={pillBackground} onChange={e=>setPillBackground(e.target.checked)}/>
+              </label>
               <label className="setting">
                 <div><strong>显示翻译</strong><p>显示歌词提供的翻译。</p></div>
                 <input type="checkbox" aria-label="显示翻译" checked={showTranslation} onChange={e => setShowTranslation(e.target.checked)} />

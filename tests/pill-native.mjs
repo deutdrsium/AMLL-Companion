@@ -19,6 +19,7 @@ try{
  page.on('pageerror',e=>errors.push(e.message));
  await page.waitForURL('https://companion.local/**');
  await page.waitForFunction(()=>!!window.companion);
+ await page.evaluate(()=>localStorage.removeItem('pill-background'));
  await page.route('https://api.amll.dev/**',r=>r.fulfill({json:{status:200,data:{items:[]}}}));
  await page.route('https://lrclib.net/**',r=>r.fulfill({json:[]}));
  await page.addInitScript(()=>{
@@ -111,6 +112,31 @@ try{
  await page.getByRole('button',{name:'返回主界面'}).click();
  await page.waitForSelector('main');
  assert.equal((await page.evaluate(()=>window.companion.windowState())).mode,'normal');
+ await page.getByRole('button',{name:'设置',exact:true}).click();
+ const backgroundToggle=page.getByRole('checkbox',{name:'悬浮歌词背景',exact:true});
+ assert.equal(await backgroundToggle.isChecked(),true,'Background defaults to enabled');
+ await backgroundToggle.uncheck();
+ assert.equal(await page.locator('.album-background').count(),1,'Normal interface keeps its background');
+ await page.getByRole('button',{name:'关闭弹窗',exact:true}).click();
+ await page.getByRole('button',{name:'悬浮歌词',exact:true}).click();
+ await page.waitForSelector('.pill.no-background .amll-lyric-player');
+ assert.equal(await page.locator('.ambient,.album-background,.cover-glow,.light-bloom,.shade').count(),0,'Transparent mode unmounts all background layers');
+ assert.equal(await page.locator('.pill').evaluate(el=>getComputedStyle(el).boxShadow),'none','No pill shadow remains');
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForSelector('.pill.no-background .amll-lyric-player');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('pill-background')),'false','Background preference survives reload');
+ await page.mouse.move(-20,-20);await page.waitForTimeout(800);
+ await page.screenshot({path:'test-results/pill/transparent.png',omitBackground:true});
+ assert.ok(await page.locator('.pill .amll-lyric-player').evaluate(el=>el.getAnimations({subtree:true}).length>0),'Transparent mode retains AMLL word animations');
+ await page.keyboard.press('Escape');await page.waitForSelector('main');
+ await page.getByRole('button',{name:'设置',exact:true}).click();
+ assert.equal(await backgroundToggle.isChecked(),false,'Settings reflect the saved choice');
+ await backgroundToggle.check();
+ await page.getByRole('button',{name:'关闭弹窗',exact:true}).click();
+ await page.getByRole('button',{name:'悬浮歌词',exact:true}).click();
+ await page.waitForSelector('.pill .album-background');
+ assert.equal(await page.locator('.pill.no-background').count(),0,'Re-enabling restores the pill background');
+ assert.notEqual(await page.locator('.pill').evaluate(el=>getComputedStyle(el).boxShadow),'none');
  assert.deepEqual(errors,[]);
- console.log('PASS native pill: per-pixel alpha, no rectangular DWM shadow, AMLL word motion, current/next/translation, seek, narrow layout, Escape, floating entry, restore, no page errors');
+ console.log('PASS native pill: alpha/shadow, AMLL word and spring motion, seek, resize, restore, background toggle, transparent text, saved preference, normal background preserved, re-enable, no page errors');
 }finally{if(host.exitCode===null)host.kill();await browser?.close();}
